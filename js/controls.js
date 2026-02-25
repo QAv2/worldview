@@ -1,0 +1,322 @@
+// controls.js — UI panels, filters, keyboard shortcuts
+
+const Controls = (() => {
+  let presets = [];
+  let labelsVisible = true;
+
+  const LAYERS = [
+    { id: 'earthquakes', name: 'Earthquakes', color: 'var(--quake-shallow)', key: 'F1', module: () => Earthquakes },
+    { id: 'satellites', name: 'Satellites', color: 'var(--sat-color)', key: 'F2', module: () => Satellites },
+    { id: 'aircraft', name: 'Aircraft', color: 'var(--aircraft-civil)', key: 'F3', module: () => Aircraft },
+    { id: 'cctv', name: 'CCTV Cameras', color: 'var(--cctv-color)', key: 'F4', module: () => CCTV },
+    { id: 'bases', name: 'Underground Bases', color: 'var(--base-color)', key: 'F5', module: () => Bases },
+    { id: 'intel', name: 'Intel Network', color: 'var(--accent)', key: 'F6', module: () => Intel },
+  ];
+
+  const MODES = [
+    { id: 'normal', name: 'Normal', key: '0' },
+    { id: 'crt', name: 'CRT', key: '1' },
+    { id: 'nvg', name: 'NVG', key: '2' },
+    { id: 'flir', name: 'FLIR', key: '3' },
+  ];
+
+  async function init() {
+    // Load presets
+    try {
+      const resp = await fetch('data/presets.json');
+      presets = await resp.json();
+    } catch {
+      presets = [];
+    }
+
+    buildBaseLayerSwitcher();
+    buildModeButtons();
+    buildLayerToggles();
+    buildPresetButtons();
+    setupKeyboard();
+    setupMouse();
+    setupMiscToggles();
+    startClock();
+  }
+
+  function buildBaseLayerSwitcher() {
+    const container = document.getElementById('base-layer-buttons');
+    const layers = Globe.getBaseLayerList();
+    layers.forEach(layer => {
+      const btn = document.createElement('button');
+      btn.className = 'mode-btn' + (layer.id === Globe.getBaseLayerId() ? ' active' : '');
+      btn.textContent = layer.name;
+      btn.dataset.layerId = layer.id;
+      btn.addEventListener('click', () => {
+        Globe.setBaseLayer(layer.id);
+        container.querySelectorAll('.mode-btn').forEach(b => {
+          b.classList.toggle('active', b.dataset.layerId === layer.id);
+        });
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  function buildModeButtons() {
+    const container = document.getElementById('mode-buttons');
+    MODES.forEach(mode => {
+      const btn = document.createElement('button');
+      btn.className = 'mode-btn' + (mode.id === 'normal' ? ' active' : '');
+      btn.innerHTML = `${mode.name} <span class="layer-key">${mode.key}</span>`;
+      btn.addEventListener('click', () => setMode(mode.id));
+      container.appendChild(btn);
+    });
+  }
+
+  function setMode(modeId) {
+    Shaders.setMode(modeId);
+    document.querySelectorAll('#mode-buttons .mode-btn').forEach((btn, i) => {
+      btn.classList.toggle('active', MODES[i].id === modeId);
+    });
+  }
+
+  function buildLayerToggles() {
+    const container = document.getElementById('layer-toggles');
+    LAYERS.forEach(layer => {
+      const div = document.createElement('div');
+      div.className = 'layer-toggle';
+      div.id = `toggle-${layer.id}`;
+      div.innerHTML = `
+        <div class="dot" style="background:${layer.color}"></div>
+        <span class="layer-label">${layer.name}</span>
+        <span class="layer-count" id="count-${layer.id}">—</span>
+        <span class="layer-key">${layer.key}</span>
+      `;
+      div.addEventListener('click', () => toggleLayer(layer.id));
+      container.appendChild(div);
+    });
+  }
+
+  function toggleLayer(layerId) {
+    const layer = LAYERS.find(l => l.id === layerId);
+    if (!layer) return;
+    const mod = layer.module();
+    const newState = !mod.isVisible();
+    mod.setVisible(newState);
+    const el = document.getElementById(`toggle-${layerId}`);
+    if (el) el.classList.toggle('off', !newState);
+  }
+
+  function buildPresetButtons() {
+    const container = document.getElementById('preset-buttons');
+    presets.forEach(preset => {
+      const btn = document.createElement('button');
+      btn.className = 'preset-btn';
+      btn.innerHTML = `
+        <span class="preset-key">${preset.key}</span>
+        <span>${preset.name}</span>
+      `;
+      btn.addEventListener('click', () => {
+        Globe.flyTo(preset.lon, preset.lat, preset.altitude);
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  function setupKeyboard() {
+    document.addEventListener('keydown', (e) => {
+      // Don't capture if typing in an input
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+
+      const key = e.key;
+
+      // Base layer shortcuts (Alt+1-5)
+      if (e.altKey && key >= '1' && key <= '5') {
+        e.preventDefault();
+        const layerIds = ['dark', 'satellite', 'terrain', 'osm', 'voyager'];
+        const idx = parseInt(key) - 1;
+        if (layerIds[idx]) {
+          Globe.setBaseLayer(layerIds[idx]);
+          // Update button states
+          document.querySelectorAll('#base-layer-buttons .mode-btn').forEach(b => {
+            b.classList.toggle('active', b.dataset.layerId === layerIds[idx]);
+          });
+        }
+        return;
+      }
+
+      // Visual modes
+      if (key === '0') setMode('normal');
+      if (key === '1') setMode('crt');
+      if (key === '2') setMode('nvg');
+      if (key === '3') setMode('flir');
+
+      // Camera presets
+      const preset = presets.find(p => p.key.toLowerCase() === key.toLowerCase());
+      if (preset && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        Globe.flyTo(preset.lon, preset.lat, preset.altitude);
+      }
+
+      // Layer toggles (F1-F6)
+      if (key.startsWith('F') && !e.ctrlKey) {
+        const fNum = parseInt(key.slice(1));
+        if (fNum >= 1 && fNum <= LAYERS.length) {
+          e.preventDefault();
+          toggleLayer(LAYERS[fNum - 1].id);
+        }
+      }
+
+      // Labels toggle
+      if (key.toLowerCase() === 'l') {
+        labelsVisible = !labelsVisible;
+        Earthquakes.setLabelsVisible(labelsVisible);
+        Satellites.setLabelsVisible(labelsVisible);
+        Aircraft.setLabelsVisible(labelsVisible);
+        CCTV.setLabelsVisible(labelsVisible);
+        Bases.setLabelsVisible(labelsVisible);
+        Intel.setLabelsVisible(labelsVisible);
+        document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
+      }
+
+      // Crosshair toggle
+      if (key.toLowerCase() === 'x') {
+        const ch = document.getElementById('crosshair');
+        const isVisible = ch.style.display !== 'none';
+        ch.style.display = isVisible ? 'none' : 'block';
+        document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
+      }
+
+      // Panel toggle
+      if (key === 'Tab') {
+        e.preventDefault();
+        document.getElementById('side-panel').classList.toggle('collapsed');
+      }
+
+      // Help
+      if (key === '?') {
+        document.getElementById('help-overlay').classList.toggle('visible');
+      }
+
+      // Escape — close panels
+      if (key === 'Escape') {
+        Dossier.close();
+        CCTV.hideFeed();
+        document.getElementById('help-overlay').classList.remove('visible');
+      }
+    });
+  }
+
+  function setupMouse() {
+    const viewer = Globe.getViewer();
+    if (!viewer) return;
+
+    // Click handler for entities
+    const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+
+    handler.setInputAction((click) => {
+      const picked = viewer.scene.pick(click.position);
+      if (!Cesium.defined(picked) || !picked.id || !picked.id.properties) return;
+
+      const props = picked.id.properties;
+      const type = props.type?.getValue ? props.type.getValue() : props.type;
+
+      switch (type) {
+        case 'earthquake':
+          Dossier.showEarthquake(props);
+          break;
+        case 'satellite':
+          Dossier.showSatellite(props);
+          const satIdx = props.satIndex?.getValue ? props.satIndex.getValue() : props.satIndex;
+          if (satIdx !== undefined) Satellites.trackSat(viewer, satIdx);
+          break;
+        case 'aircraft':
+          Dossier.showAircraft(props);
+          const hex = props.hex?.getValue ? props.hex.getValue() : props.hex;
+          if (hex) Aircraft.trackAircraft(viewer, hex);
+          break;
+        case 'cctv':
+          CCTV.showFeed(props);
+          break;
+        case 'base':
+          const baseId = props.id?.getValue ? props.id.getValue() : props.id;
+          Dossier.showBase(baseId);
+          break;
+        case 'intel':
+          const entityId = props.id?.getValue ? props.id.getValue() : props.id;
+          Dossier.showIntel(entityId);
+          break;
+      }
+    }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+    // Mouse move for coordinates
+    handler.setInputAction((movement) => {
+      const coords = Globe.getMouseCoords(movement);
+      const el = document.getElementById('coords');
+      if (coords) {
+        el.textContent = `${coords.lat.toFixed(4)}° ${coords.lon.toFixed(4)}° | ALT ${formatAlt(coords.alt)}`;
+      }
+    }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
+  }
+
+  function setupMiscToggles() {
+    document.getElementById('toggle-panel-btn').addEventListener('click', () => {
+      document.getElementById('side-panel').classList.toggle('collapsed');
+    });
+
+    document.getElementById('labels-toggle').addEventListener('click', () => {
+      labelsVisible = !labelsVisible;
+      Earthquakes.setLabelsVisible(labelsVisible);
+      Satellites.setLabelsVisible(labelsVisible);
+      Aircraft.setLabelsVisible(labelsVisible);
+      CCTV.setLabelsVisible(labelsVisible);
+      Bases.setLabelsVisible(labelsVisible);
+      Intel.setLabelsVisible(labelsVisible);
+      document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
+    });
+
+    document.getElementById('crosshair-toggle').addEventListener('click', () => {
+      const ch = document.getElementById('crosshair');
+      const isVisible = ch.style.display !== 'none';
+      ch.style.display = isVisible ? 'none' : 'block';
+      document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
+    });
+
+    document.getElementById('cctv-close').addEventListener('click', () => CCTV.hideFeed());
+  }
+
+  function startClock() {
+    function update() {
+      const now = new Date();
+      const utc = now.toISOString().slice(11, 19) + ' UTC';
+      document.getElementById('utc-clock').textContent = utc;
+    }
+    update();
+    setInterval(update, 1000);
+  }
+
+  function formatAlt(meters) {
+    if (meters > 100000) return (meters / 1000).toFixed(0) + ' km';
+    if (meters > 1000) return (meters / 1000).toFixed(1) + ' km';
+    return meters.toFixed(0) + ' m';
+  }
+
+  // Update layer counts periodically
+  function updateCounts() {
+    const counts = {
+      earthquakes: Earthquakes.getCount(),
+      satellites: Satellites.getCount(),
+      aircraft: Aircraft.getCount(),
+      cctv: CCTV.getCount(),
+      bases: Bases.getCount(),
+      intel: Intel.getCount(),
+    };
+
+    Object.entries(counts).forEach(([id, count]) => {
+      const el = document.getElementById(`count-${id}`);
+      if (el) el.textContent = count || '—';
+    });
+
+    const statusEl = document.getElementById('layer-status');
+    if (statusEl) {
+      const total = Object.values(counts).reduce((a, b) => a + b, 0);
+      statusEl.textContent = `${total} entities`;
+    }
+  }
+
+  return { init, updateCounts };
+})();

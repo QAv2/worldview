@@ -1,0 +1,3 @@
+{
+  "note": "Geo-enriched intel entities are embedded directly in js/intel.js for Phase 1. This file reserved for expanded entity data in future phases (import from intel-console curated_entities + disclosure-files nodes)."
+}

@@ -1,0 +1,11 @@
+{
+  "name": "worldview-intel-globe",
+  "version": "1.0.0",
+  "description": "Palantir-style geospatial intelligence dashboard",
+  "private": true,
+  "scripts": {
+    "dev": "npx serve . -p 8080",
+    "deploy": "netlify deploy --prod"
+  },
+  "dependencies": {}
+}

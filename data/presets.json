@@ -1,0 +1,74 @@
+[
+  {
+    "id": "home",
+    "name": "Home (Overview)",
+    "lat": 39.8283,
+    "lon": -98.5795,
+    "altitude": 15000000,
+    "key": "Q",
+    "description": "Continental US overview"
+  },
+  {
+    "id": "dulce",
+    "name": "Dulce Complex",
+    "lat": 36.9519,
+    "lon": -106.9953,
+    "altitude": 50000,
+    "key": "W",
+    "description": "Dulce, NM — alleged underground facility"
+  },
+  {
+    "id": "area51",
+    "name": "Area 51",
+    "lat": 37.2350,
+    "lon": -115.8111,
+    "altitude": 50000,
+    "key": "E",
+    "description": "Groom Lake, NV — flight test center"
+  },
+  {
+    "id": "denver",
+    "name": "Denver Airport",
+    "lat": 39.8561,
+    "lon": -104.6737,
+    "altitude": 30000,
+    "key": "R",
+    "description": "DIA underground complex"
+  },
+  {
+    "id": "pine-gap",
+    "name": "Pine Gap",
+    "lat": -23.7990,
+    "lon": 133.7370,
+    "altitude": 100000,
+    "key": "T",
+    "description": "Joint Defence Facility, Australia"
+  },
+  {
+    "id": "global",
+    "name": "Global View",
+    "lat": 20,
+    "lon": 0,
+    "altitude": 25000000,
+    "key": "G",
+    "description": "Full globe overview"
+  },
+  {
+    "id": "cog-network",
+    "name": "COG Network",
+    "lat": 39.4,
+    "lon": -77.8,
+    "altitude": 200000,
+    "key": "C",
+    "description": "Continuity of Government — Mt. Weather, Raven Rock, Camp David"
+  },
+  {
+    "id": "nm-corridor",
+    "name": "New Mexico Corridor",
+    "lat": 34.5,
+    "lon": -106.5,
+    "altitude": 500000,
+    "key": "N",
+    "description": "Los Alamos, Sandia, White Sands, Dulce cluster"
+  }
+]

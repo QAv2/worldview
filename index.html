@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WORLDVIEW // Intel Globe</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.136/Build/Cesium/Widgets/widgets.css">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.136/Build/Cesium/Cesium.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/satellite.js/5.0.0/satellite.min.js"></script>
+</head>
+<body>
+
+  <!-- Loading Screen -->
+  <div id="loading-screen">
+    <div class="loading-title">WORLDVIEW</div>
+    <div class="loading-status" id="loading-status">INITIALIZING SYSTEMS...</div>
+    <div class="loading-bar"><div class="loading-bar-fill" id="loading-bar-fill"></div></div>
+  </div>
+
+  <!-- Globe Container -->
+  <div id="cesiumContainer"></div>
+
+  <!-- Shader overlay for post-processing -->
+  <canvas id="shader-overlay"></canvas>
+
+  <!-- Top Bar -->
+  <div id="top-bar">
+    <div class="logo">WORLDVIEW <span>// INTEL GLOBE</span></div>
+    <div class="status">
+      <span class="live">LIVE</span>
+      <span id="utc-clock"></span>
+      <span id="layer-status"></span>
+    </div>
+  </div>
+
+  <!-- Toggle panel button -->
+  <button id="toggle-panel-btn" title="Toggle panel [Tab]">&#9776;</button>
+
+  <!-- Side Panel -->
+  <div id="side-panel">
+    <!-- Base Layer -->
+    <div class="panel-section">
+      <div class="panel-section-title">Base Layer</div>
+      <div id="base-layer-buttons"></div>
+    </div>
+
+    <!-- Visual Modes -->
+    <div class="panel-section">
+      <div class="panel-section-title">Visual Mode</div>
+      <div id="mode-buttons"></div>
+    </div>
+
+    <!-- Data Layers -->
+    <div class="panel-section">
+      <div class="panel-section-title">Data Layers</div>
+      <div id="layer-toggles"></div>
+    </div>
+
+    <!-- Camera Presets -->
+    <div class="panel-section">
+      <div class="panel-section-title">Camera Presets</div>
+      <div id="preset-buttons"></div>
+    </div>
+
+    <!-- Settings -->
+    <div class="panel-section">
+      <div class="panel-section-title">Settings</div>
+      <div class="layer-toggle" id="labels-toggle">
+        <div class="dot" style="background: var(--text-secondary)"></div>
+        <span class="layer-label">Show Labels</span>
+        <span class="layer-key">L</span>
+      </div>
+      <div class="layer-toggle" id="crosshair-toggle">
+        <div class="dot" style="background: var(--text-secondary)"></div>
+        <span class="layer-label">Crosshair</span>
+        <span class="layer-key">X</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dossier Panel (Right Side) -->
+  <div id="dossier-panel">
+    <div class="dossier-header">
+      <h2 id="dossier-title">—</h2>
+      <button class="dossier-close" id="dossier-close">&times;</button>
+    </div>
+    <div class="dossier-body" id="dossier-body"></div>
+  </div>
+
+  <!-- CCTV Overlay -->
+  <div id="cctv-overlay">
+    <div class="cctv-header">
+      <h3 id="cctv-title">Camera Feed</h3>
+      <button class="dossier-close" id="cctv-close">&times;</button>
+    </div>
+    <img id="cctv-image" src="" alt="Camera feed">
+  </div>
+
+  <!-- Crosshair -->
+  <div id="crosshair"></div>
+
+  <!-- Coords Display -->
+  <div id="coords"></div>
+
+  <!-- Mode Indicator -->
+  <div id="mode-indicator"></div>
+
+  <!-- Stats Bar -->
+  <div id="stats-bar">
+    <div class="stat-item"><div class="stat-dot" style="background:var(--quake-shallow)"></div><span id="stat-quakes">—</span></div>
+    <div class="stat-item"><div class="stat-dot" style="background:var(--sat-color)"></div><span id="stat-sats">—</span></div>
+    <div class="stat-item"><div class="stat-dot" style="background:var(--aircraft-civil)"></div><span id="stat-aircraft">—</span></div>
+    <div class="stat-item"><div class="stat-dot" style="background:var(--base-color)"></div><span id="stat-bases">—</span></div>
+    <div class="stat-item"><div class="stat-dot" style="background:var(--cctv-color)"></div><span id="stat-cctv">—</span></div>
+  </div>
+
+  <!-- Help Overlay -->
+  <div id="help-overlay">
+    <h3>Keyboard Shortcuts</h3>
+    <div class="help-row"><span class="help-desc">CRT Mode</span><span class="help-key">1</span></div>
+    <div class="help-row"><span class="help-desc">Night Vision</span><span class="help-key">2</span></div>
+    <div class="help-row"><span class="help-desc">FLIR / Thermal</span><span class="help-key">3</span></div>
+    <div class="help-row"><span class="help-desc">Normal Mode</span><span class="help-key">0</span></div>
+    <hr style="border-color:var(--border);margin:8px 0">
+    <div class="help-row"><span class="help-desc">Dark Map</span><span class="help-key">Alt+1</span></div>
+    <div class="help-row"><span class="help-desc">Satellite Imagery</span><span class="help-key">Alt+2</span></div>
+    <div class="help-row"><span class="help-desc">Terrain Map</span><span class="help-key">Alt+3</span></div>
+    <div class="help-row"><span class="help-desc">OpenStreetMap</span><span class="help-key">Alt+4</span></div>
+    <div class="help-row"><span class="help-desc">Voyager Map</span><span class="help-key">Alt+5</span></div>
+    <hr style="border-color:var(--border);margin:8px 0">
+    <div class="help-row"><span class="help-desc">Home / US Overview</span><span class="help-key">Q</span></div>
+    <div class="help-row"><span class="help-desc">Dulce Complex</span><span class="help-key">W</span></div>
+    <div class="help-row"><span class="help-desc">Area 51</span><span class="help-key">E</span></div>
+    <div class="help-row"><span class="help-desc">Denver Airport</span><span class="help-key">R</span></div>
+    <div class="help-row"><span class="help-desc">Pine Gap</span><span class="help-key">T</span></div>
+    <div class="help-row"><span class="help-desc">Global View</span><span class="help-key">G</span></div>
+    <div class="help-row"><span class="help-desc">COG Network</span><span class="help-key">C</span></div>
+    <div class="help-row"><span class="help-desc">NM Corridor</span><span class="help-key">N</span></div>
+    <hr style="border-color:var(--border);margin:8px 0">
+    <div class="help-row"><span class="help-desc">Toggle Labels</span><span class="help-key">L</span></div>
+    <div class="help-row"><span class="help-desc">Toggle Crosshair</span><span class="help-key">X</span></div>
+    <div class="help-row"><span class="help-desc">Toggle Panel</span><span class="help-key">Tab</span></div>
+    <div class="help-row"><span class="help-desc">Close Panels</span><span class="help-key">Esc</span></div>
+    <div class="help-row"><span class="help-desc">This Help</span><span class="help-key">?</span></div>
+  </div>
+
+  <!-- App Scripts -->
+  <script src="js/globe.js"></script>
+  <script src="js/shaders.js"></script>
+  <script src="js/earthquakes.js"></script>
+  <script src="js/satellites.js"></script>
+  <script src="js/aircraft.js"></script>
+  <script src="js/cctv.js"></script>
+  <script src="js/bases.js"></script>
+  <script src="js/intel.js"></script>
+  <script src="js/dossier.js"></script>
+  <script src="js/controls.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
