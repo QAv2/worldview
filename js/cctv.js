@@ -1,32 +1,170 @@
-// cctv.js — Austin TX traffic camera feeds
+// cctv.js — Multi-source global traffic camera feeds
 
 const CCTV = (() => {
   let entities = [];
   let visible = true;
   let cameraData = [];
-  const FEED_URL = 'https://data.austintexas.gov/resource/b4k4-adkb.json?$limit=200';
   const REFRESH_MS = 300000; // 5 minutes
 
-  async function init(viewer) {
-    await fetchCameras(viewer);
-    setInterval(() => fetchCameras(viewer), REFRESH_MS);
+  // Each source: { name, url, parse(data) → [{lat, lon, name, imageUrl, source}] }
+  const SOURCES = [
+    {
+      name: 'Austin TX',
+      url: 'https://data.austintexas.gov/resource/b4k4-adkb.json?$limit=500',
+      parse: (data) => data.map(c => {
+        let lat, lon;
+        if (c.location && c.location.coordinates) {
+          lon = parseFloat(c.location.coordinates[0]);
+          lat = parseFloat(c.location.coordinates[1]);
+        } else {
+          lat = parseFloat(c.location_latitude);
+          lon = parseFloat(c.location_longitude);
+        }
+        return {
+          lat, lon,
+          name: c.location_name || c.camera_id || 'Austin Camera',
+          imageUrl: c.camera_mgt_url || c.screenshot_address || null,
+          source: 'Austin TX',
+        };
+      }),
+    },
+    {
+      name: 'London TfL',
+      url: 'https://api.tfl.gov.uk/Place/Type/JamCam',
+      parse: (data) => data.map(cam => {
+        const imgProp = (cam.additionalProperties || []).find(p => p.key === 'imageUrl');
+        return {
+          lat: cam.lat,
+          lon: cam.lon,
+          name: cam.commonName || cam.id || 'London Camera',
+          imageUrl: imgProp ? imgProp.value : null,
+          source: 'TfL London',
+        };
+      }),
+    },
+    {
+      name: 'Finland',
+      url: 'https://tie.digitraffic.fi/api/weathercam/v1/stations',
+      parse: (data) => {
+        const features = data.features || [];
+        return features.map(f => {
+          const coords = f.geometry ? f.geometry.coordinates : null;
+          const props = f.properties || {};
+          const presets = props.presets || [];
+          const img = presets.length > 0 ? presets[0].imageUrl : null;
+          return {
+            lat: coords ? coords[1] : null,
+            lon: coords ? coords[0] : null,
+            name: props.name || props.id || 'Finland Camera',
+            imageUrl: img || null,
+            source: 'Finland',
+          };
+        });
+      },
+    },
+    {
+      name: 'Caltrans D7 (LA)',
+      url: 'https://cwwp2.dot.ca.gov/data/d7/cctv/cctvStatusD07.json',
+      parse: parseCaltrans,
+    },
+    {
+      name: 'Caltrans D4 (Bay Area)',
+      url: 'https://cwwp2.dot.ca.gov/data/d4/cctv/cctvStatusD04.json',
+      parse: parseCaltrans,
+    },
+    {
+      name: 'Caltrans D12 (Orange County)',
+      url: 'https://cwwp2.dot.ca.gov/data/d12/cctv/cctvStatusD12.json',
+      parse: parseCaltrans,
+    },
+    {
+      name: 'Caltrans D11 (San Diego)',
+      url: 'https://cwwp2.dot.ca.gov/data/d11/cctv/cctvStatusD11.json',
+      parse: parseCaltrans,
+    },
+    {
+      name: 'Caltrans D3 (Sacramento)',
+      url: 'https://cwwp2.dot.ca.gov/data/d3/cctv/cctvStatusD03.json',
+      parse: parseCaltrans,
+    },
+    {
+      name: 'WSDOT (Washington)',
+      url: 'https://data.wsdot.wa.gov/log/MapInfo/TravellerInfo/Camera/Camera.json',
+      parse: (data) => data.map(c => ({
+        lat: c.Latitude,
+        lon: c.Longitude,
+        name: c.Title || c.Description || 'WSDOT Camera',
+        imageUrl: c.ImageURL || null,
+        source: 'WSDOT WA',
+      })),
+    },
+  ];
+
+  // Shared parser for Caltrans district CCTV JSON
+  function parseCaltrans(data) {
+    // Caltrans format: { data: [{ cctv: { location: { latitude, longitude, locationName }, imageUrl: { url } } }] }
+    // or it might be a flat array — handle both
+    const items = data.data || data;
+    if (!Array.isArray(items)) return [];
+    return items.map(item => {
+      const cam = item.cctv || item;
+      const loc = cam.location || {};
+      const img = cam.imageUrl || cam.currentImageURL || {};
+      return {
+        lat: loc.latitude || cam.latitude,
+        lon: loc.longitude || cam.longitude,
+        name: loc.locationName || loc.description || cam.description || 'Caltrans Camera',
+        imageUrl: (typeof img === 'string' ? img : img.url) || cam.currentImageURL || null,
+        source: 'Caltrans CA',
+      };
+    });
   }
 
-  async function fetchCameras(viewer) {
-    try {
-      const resp = await fetch(FEED_URL);
-      const data = await resp.json();
-      // API returns GeoJSON location: {type:"Point", coordinates:[lon, lat]}
-      cameraData = data.filter(c =>
-        (c.location && c.location.coordinates) ||
-        (c.location_latitude && c.location_longitude)
-      );
-      renderCameras(viewer);
-      updateStats();
-      console.log(`[CCTV] Loaded ${cameraData.length} cameras`);
-    } catch (err) {
-      console.warn('[CCTV] Fetch failed:', err.message);
+  async function init(viewer) {
+    await fetchAllCameras(viewer);
+    setInterval(() => fetchAllCameras(viewer), REFRESH_MS);
+  }
+
+  async function fetchAllCameras(viewer) {
+    const promises = SOURCES.map(src => fetchSource(src));
+    const results = await Promise.allSettled(promises);
+
+    let allCameras = [];
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].status === 'fulfilled') {
+        const cams = results[i].value;
+        console.log(`[CCTV] ${SOURCES[i].name}: ${cams.length} cameras`);
+        allCameras = allCameras.concat(cams);
+      } else {
+        console.warn(`[CCTV] ${SOURCES[i].name}: failed —`, results[i].reason?.message || 'unknown error');
+      }
     }
+
+    // Filter valid coordinates
+    cameraData = allCameras.filter(c => {
+      const lat = parseFloat(c.lat);
+      const lon = parseFloat(c.lon);
+      return !isNaN(lat) && !isNaN(lon) && lat !== 0 && lon !== 0;
+    });
+
+    console.log(`[CCTV] Total: ${cameraData.length} cameras from ${SOURCES.length} sources`);
+    renderCameras(viewer);
+    updateStats();
+  }
+
+  async function fetchSource(src) {
+    let data;
+    try {
+      const resp = await fetch(src.url);
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      data = await resp.json();
+    } catch {
+      // Fallback through CORS proxy
+      const resp = await fetch(`/.netlify/functions/proxy?url=${encodeURIComponent(src.url)}`);
+      if (!resp.ok) throw new Error(`Proxy HTTP ${resp.status}`);
+      data = await resp.json();
+    }
+    return src.parse(data);
   }
 
   function renderCameras(viewer) {
@@ -34,14 +172,8 @@ const CCTV = (() => {
     entities = [];
 
     cameraData.forEach(cam => {
-      let lat, lon;
-      if (cam.location && cam.location.coordinates) {
-        lon = parseFloat(cam.location.coordinates[0]);
-        lat = parseFloat(cam.location.coordinates[1]);
-      } else {
-        lat = parseFloat(cam.location_latitude);
-        lon = parseFloat(cam.location_longitude);
-      }
+      const lat = parseFloat(cam.lat);
+      const lon = parseFloat(cam.lon);
       if (isNaN(lat) || isNaN(lon)) return;
 
       const entity = viewer.entities.add({
@@ -56,7 +188,7 @@ const CCTV = (() => {
           scaleByDistance: new Cesium.NearFarScalar(1e4, 1, 5e5, 0.3),
         },
         label: {
-          text: cam.location_name || cam.camera_id || '—',
+          text: cam.name || '—',
           font: '9px monospace',
           fillColor: Cesium.Color.fromCssColorString('#34d399').withAlpha(0.6),
           outlineColor: Cesium.Color.BLACK,
@@ -70,11 +202,9 @@ const CCTV = (() => {
         },
         properties: {
           type: 'cctv',
-          name: cam.location_name || cam.camera_id,
-          imageUrl: cam.camera_mgt_url || cam.screenshot_address,
-          cameraId: cam.camera_id,
-          status: cam.camera_status,
-          turnOn: cam.turn_on_date,
+          name: cam.name,
+          imageUrl: cam.imageUrl,
+          source: cam.source,
         },
         show: visible,
       });
@@ -90,8 +220,9 @@ const CCTV = (() => {
 
     const name = cam.name?.getValue ? cam.name.getValue() : cam.name;
     const imageUrl = cam.imageUrl?.getValue ? cam.imageUrl.getValue() : cam.imageUrl;
+    const source = cam.source?.getValue ? cam.source.getValue() : cam.source;
 
-    title.textContent = name || 'Camera Feed';
+    title.textContent = (name || 'Camera Feed') + (source ? ` [${source}]` : '');
 
     if (imageUrl) {
       img.src = imageUrl;

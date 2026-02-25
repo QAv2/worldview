@@ -26,6 +26,11 @@ exports.handler = async (event) => {
     'celestrak.org',
     'api.adsb.lol',
     'opensky-network.org',
+    'api.tfl.gov.uk',
+    'tie.digitraffic.fi',
+    'cwwp2.dot.ca.gov',
+    'data.wsdot.wa.gov',
+    'data.austintexas.gov',
   ];
 
   let parsed;

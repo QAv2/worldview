@@ -1,4 +1,4 @@
-// aircraft.js — adsb.lol aircraft tracking (commercial + military)
+// aircraft.js — Global aircraft tracking (OpenSky Network + adsb.lol military)
 
 const Aircraft = (() => {
   let entities = [];
@@ -10,16 +10,42 @@ const Aircraft = (() => {
   let consecutiveFailures = 0;
   let refreshTimer = null;
 
-  // Query multiple regions for global coverage (adsb.lol caps per-query results)
-  const REGION_QUERIES = [
-    { lat: 39.83, lon: -98.58, dist: 3000, label: 'Americas' },       // Central US — covers NA/SA
-    { lat: 50.0,  lon: 10.0,   dist: 3000, label: 'Europe/Africa' },  // Central Europe
-    { lat: 35.0,  lon: 105.0,  dist: 3000, label: 'Asia' },           // China
-    { lat: -25.0, lon: 135.0,  dist: 3000, label: 'Oceania' },        // Australia
-  ];
+  // OpenSky Network — returns ALL global aircraft in one call
+  const OPENSKY_URL = 'https://opensky-network.org/api/states/all';
+  // adsb.lol — military endpoint for mil tagging
   const MIL_URL = 'https://api.adsb.lol/v2/mil';
-  const REFRESH_MS = 15000; // 15 seconds (4 queries now)
-  const MAX_FAILURES = 3;
+  // adsb.lol fallback regions (250 NM max per query — the actual API cap)
+  const ADSB_REGIONS = [
+    { lat: 47.6, lon: -122.3, label: 'US-PNW' },
+    { lat: 37.8, lon: -122.4, label: 'US-NorCal' },
+    { lat: 34.0, lon: -118.2, label: 'US-SoCal' },
+    { lat: 33.4, lon: -112.0, label: 'US-AZ' },
+    { lat: 39.7, lon: -104.9, label: 'US-CO' },
+    { lat: 44.9, lon: -93.3,  label: 'US-MN' },
+    { lat: 39.8, lon: -98.6,  label: 'US-KS' },
+    { lat: 29.8, lon: -95.4,  label: 'US-TX' },
+    { lat: 41.9, lon: -87.6,  label: 'US-IL' },
+    { lat: 33.7, lon: -84.4,  label: 'US-GA' },
+    { lat: 40.7, lon: -74.0,  label: 'US-NY' },
+    { lat: 42.4, lon: -71.0,  label: 'US-MA' },
+    { lat: 25.8, lon: -80.2,  label: 'US-FL' },
+    { lat: 38.9, lon: -77.0,  label: 'US-DC' },
+    { lat: 51.5, lon: -0.1,   label: 'UK' },
+    { lat: 48.9, lon: 2.3,    label: 'France' },
+    { lat: 52.5, lon: 13.4,   label: 'Germany' },
+    { lat: 41.9, lon: 12.5,   label: 'Italy' },
+    { lat: 40.4, lon: -3.7,   label: 'Spain' },
+    { lat: 55.8, lon: 37.6,   label: 'Russia-W' },
+    { lat: 35.7, lon: 139.7,  label: 'Japan' },
+    { lat: 25.0, lon: 55.3,   label: 'UAE' },
+    { lat: 1.35, lon: 103.8,  label: 'Singapore' },
+    { lat: -33.9, lon: 151.2, label: 'Australia' },
+    { lat: -23.5, lon: -46.6, label: 'Brazil' },
+  ];
+  const ADSB_DIST = 250; // nautical miles — adsb.lol hard cap
+
+  const REFRESH_MS = 15000;
+  const MAX_FAILURES = 5;
 
   async function init(viewer) {
     await fetchAircraft(viewer);
@@ -39,47 +65,62 @@ const Aircraft = (() => {
 
   async function fetchAircraft(viewer) {
     try {
-      // Fetch all regions + military in parallel
-      const regionUrls = REGION_QUERIES.map(r =>
-        `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.dist}`
-      );
-      const fetches = [
-        ...regionUrls.map(url => fetchWithProxy(url)),
-        fetchWithProxy(MIL_URL),
-      ];
+      // Fetch military data in parallel with main source
+      const milPromise = fetchWithProxy(MIL_URL).catch(() => ({ ac: [] }));
 
-      const results = await Promise.allSettled(fetches);
+      // Try OpenSky first (global, single request)
+      let allAircraft = [];
+      let source = 'none';
 
-      // Military is the last result
-      const milResult = results[results.length - 1];
-      const milData = milResult.status === 'fulfilled' ? milResult.value : { ac: [] };
+      try {
+        const opensky = await fetchWithProxy(OPENSKY_URL);
+        if (opensky.states && opensky.states.length > 0) {
+          allAircraft = parseOpenSky(opensky.states);
+          source = 'OpenSky';
+          console.log(`[Aircraft] OpenSky: ${opensky.states.length} vectors → ${allAircraft.length} airborne`);
+        } else {
+          throw new Error('OpenSky returned no states');
+        }
+      } catch (err) {
+        console.warn(`[Aircraft] OpenSky failed (${err.message}), falling back to adsb.lol tiling...`);
+        allAircraft = await fetchAdsbTiled();
+        source = 'adsb.lol';
+      }
+
+      // Apply military tagging
+      const milData = await milPromise;
       const milHexes = new Set((milData.ac || []).map(a => a.hex));
+      const acMap = new Map(allAircraft.map(a => [a.hex, a]));
 
-      // Merge all regional results, dedup by hex
-      const seen = new Map();
-      for (let i = 0; i < results.length - 1; i++) {
-        if (results[i].status !== 'fulfilled') {
-          console.warn(`[Aircraft] ${REGION_QUERIES[i].label} query failed`);
-          continue;
-        }
-        const ac = results[i].value.ac || [];
-        console.log(`[Aircraft] ${REGION_QUERIES[i].label}: ${ac.length} aircraft`);
-        for (const a of ac) {
-          if (a.hex && !seen.has(a.hex)) {
-            seen.set(a.hex, { ...a, isMilitary: milHexes.has(a.hex) });
-          }
-        }
+      for (const ac of allAircraft) {
+        if (milHexes.has(ac.hex)) ac.isMilitary = true;
       }
 
-      // Add military-only entries not in regional data
+      // Add military-only entries not already in data
       for (const a of (milData.ac || [])) {
-        if (a.hex && !seen.has(a.hex)) {
-          seen.set(a.hex, { ...a, isMilitary: true });
+        if (a.hex && a.lat && a.lon && !acMap.has(a.hex)) {
+          allAircraft.push({
+            hex: a.hex,
+            flight: (a.flight || '').trim(),
+            lat: a.lat,
+            lon: a.lon,
+            alt_meters: (a.alt_geom || a.alt_baro || 10000) * 0.3048,
+            track: a.track || 0,
+            gs: a.gs,
+            squawk: a.squawk,
+            category: a.category,
+            r: a.r,
+            t: a.t,
+            ownOp: a.ownOp,
+            on_ground: false,
+            isMilitary: true,
+          });
         }
       }
 
-      aircraftData = Array.from(seen.values());
-      console.log(`[Aircraft] Total: ${aircraftData.length} unique (${milHexes.size} mil tagged)`);
+      aircraftData = allAircraft;
+      const milCount = aircraftData.filter(a => a.isMilitary).length;
+      console.log(`[Aircraft] ${source}: ${aircraftData.length} total (${milCount} mil)`);
 
       consecutiveFailures = 0;
       renderAircraft(viewer);
@@ -90,13 +131,85 @@ const Aircraft = (() => {
     }
   }
 
+  // Parse OpenSky state vector arrays into objects
+  // Indices: 0=icao24, 1=callsign, 2=origin_country, 5=lon, 6=lat,
+  //          7=baro_alt(m), 8=on_ground, 9=velocity(m/s), 10=true_track,
+  //          13=geo_alt(m), 14=squawk, 17=category
+  function parseOpenSky(states) {
+    const aircraft = [];
+    for (const s of states) {
+      // Skip no-position or on-ground
+      if (s[5] == null || s[6] == null || s[8]) continue;
+
+      const geoAlt = s[13];
+      const baroAlt = s[7];
+      const alt = geoAlt != null ? geoAlt : (baroAlt != null ? baroAlt : 10000);
+
+      aircraft.push({
+        hex: s[0],
+        flight: (s[1] || '').trim(),
+        lat: s[6],
+        lon: s[5],
+        alt_meters: alt,
+        track: s[10] || 0,
+        gs: s[9] != null ? s[9] * 1.944 : null, // m/s → knots
+        squawk: s[14] || null,
+        category: s[17] || null,
+        origin_country: s[2] || null,
+        on_ground: false,
+        isMilitary: false,
+      });
+    }
+    return aircraft;
+  }
+
+  // Fallback: dense adsb.lol tiling at 250 NM per query
+  async function fetchAdsbTiled() {
+    const urls = ADSB_REGIONS.map(r =>
+      `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${ADSB_DIST}`
+    );
+    const results = await Promise.allSettled(urls.map(u => fetchWithProxy(u)));
+
+    const seen = new Map();
+    for (let i = 0; i < results.length; i++) {
+      if (results[i].status !== 'fulfilled') {
+        console.warn(`[Aircraft] adsb.lol ${ADSB_REGIONS[i].label} failed`);
+        continue;
+      }
+      const ac = results[i].value.ac || [];
+      console.log(`[Aircraft] adsb.lol ${ADSB_REGIONS[i].label}: ${ac.length}`);
+      for (const a of ac) {
+        if (a.hex && a.lat && a.lon && !seen.has(a.hex)) {
+          seen.set(a.hex, {
+            hex: a.hex,
+            flight: (a.flight || '').trim(),
+            lat: a.lat,
+            lon: a.lon,
+            alt_meters: (a.alt_geom || a.alt_baro || 10000) * 0.3048,
+            track: a.track || 0,
+            gs: a.gs,
+            squawk: a.squawk,
+            category: a.category,
+            r: a.r,
+            t: a.t,
+            ownOp: a.ownOp,
+            on_ground: false,
+            isMilitary: false,
+          });
+        }
+      }
+    }
+    return Array.from(seen.values());
+  }
+
   async function fetchWithProxy(url) {
     try {
       const resp = await fetch(url);
-      if (!resp.ok) throw new Error('Direct failed');
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       return await resp.json();
     } catch {
       const resp = await fetch(`/.netlify/functions/proxy?url=${encodeURIComponent(url)}`);
+      if (!resp.ok) throw new Error(`Proxy HTTP ${resp.status}`);
       return await resp.json();
     }
   }
@@ -114,9 +227,9 @@ const Aircraft = (() => {
         ? Cesium.Color.fromCssColorString('#fb923c')
         : Cesium.Color.fromCssColorString('#e2e8f0');
 
-      const alt = (ac.alt_geom || ac.alt_baro || 10000) * 0.3048; // feet to meters
+      const alt = ac.alt_meters || 0;
       const heading = ac.track || 0;
-      const callsign = (ac.flight || ac.hex || '').trim();
+      const callsign = ac.flight || ac.hex || '';
 
       const entity = viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, alt),
@@ -150,9 +263,10 @@ const Aircraft = (() => {
           heading: heading,
           squawk: ac.squawk,
           category: ac.category,
-          registration: ac.r,
-          aircraftType: ac.t,
-          operator: ac.ownOp,
+          registration: ac.r || null,
+          aircraftType: ac.t || null,
+          operator: ac.ownOp || null,
+          originCountry: ac.origin_country || null,
         },
         show: visible,
       });
@@ -164,8 +278,7 @@ const Aircraft = (() => {
     if (trackedHex) {
       const tracked = aircraftData.find(a => a.hex === trackedHex);
       if (tracked && tracked.lat && tracked.lon) {
-        const alt = (tracked.alt_geom || tracked.alt_baro || 10000) * 0.3048;
-        trailPositions.push(Cesium.Cartesian3.fromDegrees(tracked.lon, tracked.lat, alt));
+        trailPositions.push(Cesium.Cartesian3.fromDegrees(tracked.lon, tracked.lat, tracked.alt_meters || 0));
         if (trailPositions.length > 100) trailPositions.shift();
         drawTrail(viewer);
       }
@@ -175,11 +288,9 @@ const Aircraft = (() => {
   function trackAircraft(viewer, hex) {
     trackedHex = hex;
     trailPositions = [];
-    // Find current position
     const ac = aircraftData.find(a => a.hex === hex);
     if (ac && ac.lat && ac.lon) {
-      const alt = (ac.alt_geom || ac.alt_baro || 10000) * 0.3048;
-      trailPositions.push(Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, alt));
+      trailPositions.push(Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, ac.alt_meters || 0));
     }
   }
 

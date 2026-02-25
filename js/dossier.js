@@ -211,6 +211,7 @@ const Dossier = (() => {
     const reg = props.registration?.getValue ? props.registration.getValue() : props.registration;
     const acType = props.aircraftType?.getValue ? props.aircraftType.getValue() : props.aircraftType;
     const operator = props.operator?.getValue ? props.operator.getValue() : props.operator;
+    const country = props.originCountry?.getValue ? props.originCountry.getValue() : props.originCountry;
 
     titleEl.textContent = callsign || hex || 'Aircraft';
 
@@ -226,6 +227,7 @@ const Dossier = (() => {
       ${reg ? `<div class="dossier-field"><div class="dossier-field-label">Registration</div><div class="dossier-field-value">${esc(String(reg))}</div></div>` : ''}
       ${acType ? `<div class="dossier-field"><div class="dossier-field-label">Type</div><div class="dossier-field-value">${esc(String(acType))}</div></div>` : ''}
       ${operator ? `<div class="dossier-field"><div class="dossier-field-label">Operator</div><div class="dossier-field-value">${esc(String(operator))}</div></div>` : ''}
+      ${country ? `<div class="dossier-field"><div class="dossier-field-label">Origin</div><div class="dossier-field-value">${esc(String(country))}</div></div>` : ''}
       <div class="dossier-field"><div class="dossier-field-label">Altitude</div><div class="dossier-field-value">${alt ? (Number(alt) * 3.28084).toFixed(0) + ' ft' : '—'}</div></div>
       <div class="dossier-field"><div class="dossier-field-label">Ground Speed</div><div class="dossier-field-value">${speed ? Number(speed).toFixed(0) + ' kts' : '—'}</div></div>
       <div class="dossier-field"><div class="dossier-field-label">Heading</div><div class="dossier-field-value">${heading ? Number(heading).toFixed(0) + '°' : '—'}</div></div>
