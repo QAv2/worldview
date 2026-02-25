@@ -10,10 +10,16 @@ const Aircraft = (() => {
   let consecutiveFailures = 0;
   let refreshTimer = null;
 
-  const ALL_URL = 'https://api.adsb.lol/v2/lat/39.83/lon/-98.58/dist/250';
+  // Query multiple regions for global coverage (adsb.lol caps per-query results)
+  const REGION_QUERIES = [
+    { lat: 39.83, lon: -98.58, dist: 3000, label: 'Americas' },       // Central US — covers NA/SA
+    { lat: 50.0,  lon: 10.0,   dist: 3000, label: 'Europe/Africa' },  // Central Europe
+    { lat: 35.0,  lon: 105.0,  dist: 3000, label: 'Asia' },           // China
+    { lat: -25.0, lon: 135.0,  dist: 3000, label: 'Oceania' },        // Australia
+  ];
   const MIL_URL = 'https://api.adsb.lol/v2/mil';
-  const REFRESH_MS = 10000; // 10 seconds
-  const MAX_FAILURES = 3; // stop retrying after this many consecutive failures
+  const REFRESH_MS = 15000; // 15 seconds (4 queries now)
+  const MAX_FAILURES = 3;
 
   async function init(viewer) {
     await fetchAircraft(viewer);
@@ -21,40 +27,59 @@ const Aircraft = (() => {
       refreshTimer = setInterval(() => {
         if (consecutiveFailures >= MAX_FAILURES) {
           clearInterval(refreshTimer);
-          console.warn('[Aircraft] Disabled auto-refresh after repeated failures (CORS proxy not available locally)');
+          console.warn('[Aircraft] Disabled auto-refresh after repeated failures');
           return;
         }
         fetchAircraft(viewer);
       }, REFRESH_MS);
     } else {
-      console.warn('[Aircraft] Skipping auto-refresh — no data source available locally');
+      console.warn('[Aircraft] Skipping auto-refresh — no data source available');
     }
   }
 
   async function fetchAircraft(viewer) {
     try {
-      // Try fetching military aircraft separately
-      const [allResp, milResp] = await Promise.allSettled([
-        fetchWithProxy(ALL_URL),
+      // Fetch all regions + military in parallel
+      const regionUrls = REGION_QUERIES.map(r =>
+        `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${r.dist}`
+      );
+      const fetches = [
+        ...regionUrls.map(url => fetchWithProxy(url)),
         fetchWithProxy(MIL_URL),
-      ]);
+      ];
 
-      const allData = allResp.status === 'fulfilled' ? allResp.value : { ac: [] };
-      const milData = milResp.status === 'fulfilled' ? milResp.value : { ac: [] };
+      const results = await Promise.allSettled(fetches);
 
-      // Merge, marking military aircraft
+      // Military is the last result
+      const milResult = results[results.length - 1];
+      const milData = milResult.status === 'fulfilled' ? milResult.value : { ac: [] };
       const milHexes = new Set((milData.ac || []).map(a => a.hex));
-      aircraftData = (allData.ac || []).map(a => ({
-        ...a,
-        isMilitary: milHexes.has(a.hex),
-      }));
 
-      // Also add any military-only entries not in all
-      (milData.ac || []).forEach(a => {
-        if (!aircraftData.find(x => x.hex === a.hex)) {
-          aircraftData.push({ ...a, isMilitary: true });
+      // Merge all regional results, dedup by hex
+      const seen = new Map();
+      for (let i = 0; i < results.length - 1; i++) {
+        if (results[i].status !== 'fulfilled') {
+          console.warn(`[Aircraft] ${REGION_QUERIES[i].label} query failed`);
+          continue;
         }
-      });
+        const ac = results[i].value.ac || [];
+        console.log(`[Aircraft] ${REGION_QUERIES[i].label}: ${ac.length} aircraft`);
+        for (const a of ac) {
+          if (a.hex && !seen.has(a.hex)) {
+            seen.set(a.hex, { ...a, isMilitary: milHexes.has(a.hex) });
+          }
+        }
+      }
+
+      // Add military-only entries not in regional data
+      for (const a of (milData.ac || [])) {
+        if (a.hex && !seen.has(a.hex)) {
+          seen.set(a.hex, { ...a, isMilitary: true });
+        }
+      }
+
+      aircraftData = Array.from(seen.values());
+      console.log(`[Aircraft] Total: ${aircraftData.length} unique (${milHexes.size} mil tagged)`);
 
       consecutiveFailures = 0;
       renderAircraft(viewer);
