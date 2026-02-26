@@ -51,12 +51,14 @@ const CCTV = (() => {
           const coords = f.geometry ? f.geometry.coordinates : null;
           const props = f.properties || {};
           const presets = props.presets || [];
-          const img = presets.length > 0 ? presets[0].imageUrl : null;
+          // Station list only has preset IDs — construct image URL from ID
+          const presetId = presets.length > 0 ? presets[0].id : null;
+          const img = presetId ? `https://weathercam.digitraffic.fi/${presetId}.jpg` : null;
           return {
             lat: coords ? coords[1] : null,
             lon: coords ? coords[0] : null,
             name: props.name || props.id || 'Finland Camera',
-            imageUrl: img || null,
+            imageUrl: img,
             source: 'Finland',
           };
         });
@@ -87,34 +89,24 @@ const CCTV = (() => {
       url: 'https://cwwp2.dot.ca.gov/data/d3/cctv/cctvStatusD03.json',
       parse: parseCaltrans,
     },
-    {
-      name: 'WSDOT (Washington)',
-      url: 'https://data.wsdot.wa.gov/log/MapInfo/TravellerInfo/Camera/Camera.json',
-      parse: (data) => data.map(c => ({
-        lat: c.Latitude,
-        lon: c.Longitude,
-        name: c.Title || c.Description || 'WSDOT Camera',
-        imageUrl: c.ImageURL || null,
-        source: 'WSDOT WA',
-      })),
-    },
+    // WSDOT (Washington) — removed, API decommissioned (404)
   ];
 
   // Shared parser for Caltrans district CCTV JSON
   function parseCaltrans(data) {
-    // Caltrans format: { data: [{ cctv: { location: { latitude, longitude, locationName }, imageUrl: { url } } }] }
-    // or it might be a flat array — handle both
+    // Caltrans format: { data: [{ cctv: { location: {...}, imageData: { static: { currentImageURL } } } }] }
     const items = data.data || data;
     if (!Array.isArray(items)) return [];
     return items.map(item => {
       const cam = item.cctv || item;
       const loc = cam.location || {};
-      const img = cam.imageUrl || cam.currentImageURL || {};
+      const imgData = cam.imageData || {};
+      const staticData = imgData.static || {};
       return {
         lat: loc.latitude || cam.latitude,
         lon: loc.longitude || cam.longitude,
         name: loc.locationName || loc.description || cam.description || 'Caltrans Camera',
-        imageUrl: (typeof img === 'string' ? img : img.url) || cam.currentImageURL || null,
+        imageUrl: staticData.currentImageURL || null,
         source: 'Caltrans CA',
       };
     });
