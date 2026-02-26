@@ -1,20 +1,40 @@
-// aircraft.js — Global aircraft tracking (OpenSky Network + adsb.lol military)
+// aircraft.js — Global aircraft tracking (PointPrimitiveCollection + LOD budget)
+// Uses Cesium Primitive API for 10-100x performance over Entity API.
+// Full dataset kept in memory; render budget limits visible points by zoom level.
+// Military aircraft + tracked aircraft always rendered. Civil spatially sampled.
 
 const Aircraft = (() => {
-  let entities = [];
+  // --- Primitive collections (one draw call each, regardless of point count) ---
+  let pointCollection = null;
+  let labelCollection = null;
+  const pointMap = new Map();  // hex → PointPrimitive
+  const labelMap = new Map();  // hex → Label
+
+  // --- State ---
   let visible = true;
-  let aircraftData = [];
+  let labelsVisible = true;
+  let aircraftData = [];       // full dataset from API (~10K)
   let trackedHex = null;
   let trailEntity = null;
   let trailPositions = [];
   let consecutiveFailures = 0;
   let refreshTimer = null;
+  let cameraDebounce = null;
+  let currentViewer = null;
 
-  // OpenSky Network — returns ALL global aircraft in one call
+  // --- Cached Cesium objects (created once, reused across all points) ---
+  const MIL_COLOR = Cesium.Color.fromCssColorString('#fb923c').withAlpha(0.85);
+  const MIL_OUTLINE = Cesium.Color.fromCssColorString('#fb923c');
+  const MIL_LABEL_COLOR = Cesium.Color.fromCssColorString('#fb923c').withAlpha(0.7);
+  const CIVIL_COLOR = Cesium.Color.fromCssColorString('#e2e8f0').withAlpha(0.85);
+  const LABEL_OFFSET = new Cesium.Cartesian2(0, -8);
+  const LABEL_SCALE = new Cesium.NearFarScalar(1e5, 1, 5e6, 0.3);
+  const POINT_SCALE = new Cesium.NearFarScalar(1e5, 1.0, 8e6, 0.4);
+  const TRAIL_COLOR = Cesium.Color.fromCssColorString('#fb923c').withAlpha(0.5);
+
+  // --- Data sources ---
   const OPENSKY_URL = 'https://opensky-network.org/api/states/all';
-  // adsb.lol — military endpoint for mil tagging
   const MIL_URL = 'https://api.adsb.lol/v2/mil';
-  // adsb.lol fallback regions (250 NM max per query — the actual API cap)
   const ADSB_REGIONS = [
     { lat: 47.6, lon: -122.3, label: 'US-PNW' },
     { lat: 37.8, lon: -122.4, label: 'US-NorCal' },
@@ -42,12 +62,92 @@ const Aircraft = (() => {
     { lat: -33.9, lon: 151.2, label: 'Australia' },
     { lat: -23.5, lon: -46.6, label: 'Brazil' },
   ];
-  const ADSB_DIST = 250; // nautical miles — adsb.lol hard cap
+  const ADSB_DIST = 250;
 
   const REFRESH_MS = 15000;
   const MAX_FAILURES = 5;
 
+  // ========== LOD BUDGET ==========
+  // Camera height → max rendered points. Military always shown on top of budget.
+  function getRenderBudget(viewer) {
+    const height = viewer.camera.positionCartographic.height;
+    if (height > 15_000_000) return 800;   // global view
+    if (height > 8_000_000)  return 1200;  // hemisphere
+    if (height > 5_000_000)  return 2000;  // continental
+    if (height > 2_000_000)  return 3000;  // regional
+    if (height > 1_000_000)  return 4000;  // country
+    return 5000;                            // zoomed in
+  }
+
+  // Select subset for rendering: all military + tracked + sampled civil
+  function selectForRender(data, budget) {
+    if (data.length <= budget) return data;
+
+    const mil = [];
+    const civil = [];
+    for (const ac of data) {
+      if (ac.isMilitary) mil.push(ac);
+      else civil.push(ac);
+    }
+
+    const result = [...mil];
+
+    // Always include tracked aircraft
+    if (trackedHex) {
+      const tracked = civil.find(a => a.hex === trackedHex);
+      if (tracked) result.push(tracked);
+    }
+
+    const civilBudget = Math.max(0, budget - result.length);
+
+    if (civil.length <= civilBudget) {
+      // All civil fit
+      for (const ac of civil) {
+        if (ac.hex !== trackedHex) result.push(ac);
+      }
+    } else {
+      // Spatial grid sampling — one aircraft per grid cell
+      // Grid size adapts so we fill the budget with even geographic spread
+      const gridSize = Math.max(0.5, Math.sqrt(civil.length / civilBudget) * 0.8);
+      // Time-based offset rotates which aircraft gets priority each refresh
+      const offset = Math.floor(Date.now() / REFRESH_MS) % civil.length;
+      const grid = new Map();
+
+      for (let i = 0; i < civil.length && grid.size < civilBudget; i++) {
+        const ac = civil[(offset + i) % civil.length];
+        if (ac.hex === trackedHex) continue;
+        const key = `${Math.floor(ac.lat / gridSize)},${Math.floor(ac.lon / gridSize)}`;
+        if (!grid.has(key)) grid.set(key, ac);
+      }
+      for (const ac of grid.values()) result.push(ac);
+    }
+
+    return result;
+  }
+
+  // ========== INIT ==========
   async function init(viewer) {
+    currentViewer = viewer;
+
+    // Create primitive collections (1-2 GPU draw calls total)
+    pointCollection = viewer.scene.primitives.add(
+      new Cesium.PointPrimitiveCollection({ blendOption: Cesium.BlendOption.TRANSLUCENT })
+    );
+    labelCollection = viewer.scene.primitives.add(new Cesium.LabelCollection());
+
+    // Re-render on camera zoom changes (debounced)
+    viewer.camera.changed.addEventListener(() => {
+      if (cameraDebounce) clearTimeout(cameraDebounce);
+      cameraDebounce = setTimeout(() => {
+        if (aircraftData.length > 0) {
+          reconcileRender(viewer);
+          updateStats();
+        }
+      }, 300);
+    });
+    // Lower the percentage threshold so changed fires on meaningful zooms
+    viewer.camera.percentageChanged = 0.2;
+
     await fetchAircraft(viewer);
     if (consecutiveFailures < MAX_FAILURES) {
       refreshTimer = setInterval(() => {
@@ -63,12 +163,11 @@ const Aircraft = (() => {
     }
   }
 
+  // ========== DATA FETCHING (unchanged logic) ==========
   async function fetchAircraft(viewer) {
     try {
-      // Fetch military data in parallel with main source
       const milPromise = fetchWithProxy(MIL_URL).catch(() => ({ ac: [] }));
 
-      // Try OpenSky first (global, single request)
       let allAircraft = [];
       let source = 'none';
 
@@ -77,7 +176,7 @@ const Aircraft = (() => {
         if (opensky.states && opensky.states.length > 0) {
           allAircraft = parseOpenSky(opensky.states);
           source = 'OpenSky';
-          console.log(`[Aircraft] OpenSky: ${opensky.states.length} vectors → ${allAircraft.length} airborne`);
+          console.log(`[Aircraft] OpenSky: ${opensky.states.length} vectors -> ${allAircraft.length} airborne`);
         } else {
           throw new Error('OpenSky returned no states');
         }
@@ -87,7 +186,6 @@ const Aircraft = (() => {
         source = 'adsb.lol';
       }
 
-      // Apply military tagging
       const milData = await milPromise;
       const milHexes = new Set((milData.ac || []).map(a => a.hex));
       const acMap = new Map(allAircraft.map(a => [a.hex, a]));
@@ -96,7 +194,6 @@ const Aircraft = (() => {
         if (milHexes.has(ac.hex)) ac.isMilitary = true;
       }
 
-      // Add military-only entries not already in data
       for (const a of (milData.ac || [])) {
         if (a.hex && a.lat && a.lon && !acMap.has(a.hex)) {
           allAircraft.push({
@@ -123,7 +220,7 @@ const Aircraft = (() => {
       console.log(`[Aircraft] ${source}: ${aircraftData.length} total (${milCount} mil)`);
 
       consecutiveFailures = 0;
-      renderAircraft(viewer);
+      reconcileRender(viewer);
       updateStats();
     } catch (err) {
       consecutiveFailures++;
@@ -131,20 +228,13 @@ const Aircraft = (() => {
     }
   }
 
-  // Parse OpenSky state vector arrays into objects
-  // Indices: 0=icao24, 1=callsign, 2=origin_country, 5=lon, 6=lat,
-  //          7=baro_alt(m), 8=on_ground, 9=velocity(m/s), 10=true_track,
-  //          13=geo_alt(m), 14=squawk, 17=category
   function parseOpenSky(states) {
     const aircraft = [];
     for (const s of states) {
-      // Skip no-position or on-ground
       if (s[5] == null || s[6] == null || s[8]) continue;
-
       const geoAlt = s[13];
       const baroAlt = s[7];
       const alt = geoAlt != null ? geoAlt : (baroAlt != null ? baroAlt : 10000);
-
       aircraft.push({
         hex: s[0],
         flight: (s[1] || '').trim(),
@@ -152,7 +242,7 @@ const Aircraft = (() => {
         lon: s[5],
         alt_meters: alt,
         track: s[10] || 0,
-        gs: s[9] != null ? s[9] * 1.944 : null, // m/s → knots
+        gs: s[9] != null ? s[9] * 1.944 : null,
         squawk: s[14] || null,
         category: s[17] || null,
         origin_country: s[2] || null,
@@ -163,13 +253,11 @@ const Aircraft = (() => {
     return aircraft;
   }
 
-  // Fallback: dense adsb.lol tiling at 250 NM per query
   async function fetchAdsbTiled() {
     const urls = ADSB_REGIONS.map(r =>
       `https://api.adsb.lol/v2/lat/${r.lat}/lon/${r.lon}/dist/${ADSB_DIST}`
     );
     const results = await Promise.allSettled(urls.map(u => fetchWithProxy(u)));
-
     const seen = new Map();
     for (let i = 0; i < results.length; i++) {
       if (results[i].status !== 'fulfilled') {
@@ -177,7 +265,6 @@ const Aircraft = (() => {
         continue;
       }
       const ac = results[i].value.ac || [];
-      console.log(`[Aircraft] adsb.lol ${ADSB_REGIONS[i].label}: ${ac.length}`);
       for (const a of ac) {
         if (a.hex && a.lat && a.lon && !seen.has(a.hex)) {
           seen.set(a.hex, {
@@ -214,67 +301,88 @@ const Aircraft = (() => {
     }
   }
 
-  function renderAircraft(viewer) {
-    // Remove old
-    entities.forEach(e => viewer.entities.remove(e));
-    entities = [];
+  // ========== RENDER — Delta reconciliation ==========
+  // Only adds new points, updates moved points, removes departed points.
+  // No mass destroy/recreate cycle.
+  function reconcileRender(viewer) {
+    const budget = getRenderBudget(viewer);
+    const toRender = selectForRender(aircraftData, budget);
+    const desired = new Map(toRender.map(ac => [ac.hex, ac]));
 
-    aircraftData.forEach(ac => {
-      if (!ac.lat || !ac.lon) return;
+    // 1. Update existing points that are still desired, remove departed
+    for (const [hex, point] of pointMap) {
+      const ac = desired.get(hex);
+      if (ac) {
+        // Update in place — no allocation except Cartesian3
+        const pos = Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, ac.alt_meters || 0);
+        point.position = pos;
+        point.color = ac.isMilitary ? MIL_COLOR : CIVIL_COLOR;
+        point.pixelSize = ac.isMilitary ? 5 : 3;
+        point.id = makePickData(ac);
+
+        const label = labelMap.get(hex);
+        if (label) {
+          label.position = pos;
+          label.text = ac.flight || ac.hex || '-';
+          label.id = point.id;
+        }
+
+        desired.delete(hex); // handled
+      } else {
+        // Aircraft departed or filtered out — remove
+        pointCollection.remove(point);
+        pointMap.delete(hex);
+        const label = labelMap.get(hex);
+        if (label) {
+          labelCollection.remove(label);
+          labelMap.delete(hex);
+        }
+      }
+    }
+
+    // 2. Add new points for aircraft not yet rendered
+    for (const [hex, ac] of desired) {
+      if (!ac.lat || !ac.lon) continue;
 
       const isMil = ac.isMilitary;
-      const color = isMil
-        ? Cesium.Color.fromCssColorString('#fb923c')
-        : Cesium.Color.fromCssColorString('#e2e8f0');
+      const pos = Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, ac.alt_meters || 0);
+      const pickData = makePickData(ac);
 
-      const alt = ac.alt_meters || 0;
-      const heading = ac.track || 0;
-      const callsign = ac.flight || ac.hex || '';
+      const point = pointCollection.add({
+        position: pos,
+        pixelSize: isMil ? 5 : 3,
+        color: isMil ? MIL_COLOR : CIVIL_COLOR,
+        outlineColor: isMil ? MIL_OUTLINE : Cesium.Color.TRANSPARENT,
+        outlineWidth: isMil ? 1 : 0,
+        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        scaleByDistance: POINT_SCALE,
+        id: pickData,
+        show: visible,
+      });
+      pointMap.set(hex, point);
 
-      const entity = viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(ac.lon, ac.lat, alt),
-        point: {
-          pixelSize: isMil ? 5 : 3,
-          color: color.withAlpha(0.85),
-          outlineColor: color,
-          outlineWidth: isMil ? 1 : 0,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
-        },
-        label: {
-          text: callsign || '—',
-          font: `${isMil ? '10' : '9'}px monospace`,
-          fillColor: color.withAlpha(0.7),
+      // Labels only for military aircraft
+      if (isMil) {
+        const label = labelCollection.add({
+          position: pos,
+          text: ac.flight || ac.hex || '-',
+          font: '10px monospace',
+          fillColor: MIL_LABEL_COLOR,
           outlineColor: Cesium.Color.BLACK,
           outlineWidth: 1,
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
-          pixelOffset: new Cesium.Cartesian2(0, -8),
+          pixelOffset: LABEL_OFFSET,
           disableDepthTestDistance: Number.POSITIVE_INFINITY,
-          show: isMil, // only show military labels by default
-          scaleByDistance: new Cesium.NearFarScalar(1e5, 1, 5e6, 0.3),
-        },
-        properties: {
-          type: 'aircraft',
-          hex: ac.hex,
-          callsign: callsign,
-          isMilitary: isMil,
-          altitude: alt,
-          speed: ac.gs, // ground speed in knots
-          heading: heading,
-          squawk: ac.squawk,
-          category: ac.category,
-          registration: ac.r || null,
-          aircraftType: ac.t || null,
-          operator: ac.ownOp || null,
-          originCountry: ac.origin_country || null,
-        },
-        show: visible,
-      });
+          scaleByDistance: LABEL_SCALE,
+          id: pickData,
+          show: visible && labelsVisible,
+        });
+        labelMap.set(hex, label);
+      }
+    }
 
-      entities.push(entity);
-    });
-
-    // Update trail if tracking
+    // 3. Update trail for tracked aircraft
     if (trackedHex) {
       const tracked = aircraftData.find(a => a.hex === trackedHex);
       if (tracked && tracked.lat && tracked.lon) {
@@ -285,6 +393,26 @@ const Aircraft = (() => {
     }
   }
 
+  // Build a plain object for scene.pick() — matches dossier field names
+  function makePickData(ac) {
+    return {
+      type: 'aircraft',
+      hex: ac.hex,
+      callsign: ac.flight || ac.hex || '',
+      isMilitary: ac.isMilitary,
+      altitude: ac.alt_meters || 0,
+      speed: ac.gs,
+      heading: ac.track || 0,
+      squawk: ac.squawk,
+      category: ac.category,
+      registration: ac.r || null,
+      aircraftType: ac.t || null,
+      operator: ac.ownOp || null,
+      originCountry: ac.origin_country || null,
+    };
+  }
+
+  // ========== TRACKING ==========
   function trackAircraft(viewer, hex) {
     trackedHex = hex;
     trailPositions = [];
@@ -297,12 +425,11 @@ const Aircraft = (() => {
   function drawTrail(viewer) {
     if (trailEntity) viewer.entities.remove(trailEntity);
     if (trailPositions.length < 2) return;
-
     trailEntity = viewer.entities.add({
       polyline: {
-        positions: trailPositions,
+        positions: [...trailPositions],
         width: 1.5,
-        material: Cesium.Color.fromCssColorString('#fb923c').withAlpha(0.5),
+        material: TRAIL_COLOR,
       },
       show: visible,
     });
@@ -314,29 +441,42 @@ const Aircraft = (() => {
     if (trailEntity) { viewer.entities.remove(trailEntity); trailEntity = null; }
   }
 
+  // ========== VISIBILITY ==========
   function setVisible(v) {
     visible = v;
-    entities.forEach(e => { e.show = v; });
+    if (pointCollection) pointCollection.show = v;
+    if (labelCollection) labelCollection.show = v && labelsVisible;
     if (trailEntity) trailEntity.show = v;
   }
 
   function isVisible() { return visible; }
-  function getCount() { return entities.length; }
 
-  function getMilCount() {
-    return aircraftData.filter(a => a.isMilitary).length;
+  function setLabelsVisible(show) {
+    labelsVisible = show;
+    if (labelCollection) labelCollection.show = visible && show;
   }
+
+  // ========== STATS ==========
+  function getCount() { return pointMap.size; }
+  function getTotalCount() { return aircraftData.length; }
+  function getMilCount() { return aircraftData.filter(a => a.isMilitary).length; }
 
   function updateStats() {
     const el = document.getElementById('stat-aircraft');
-    if (el) el.textContent = `${entities.length} aircraft (${getMilCount()} mil)`;
+    if (el) {
+      const rendered = pointMap.size;
+      const total = aircraftData.length;
+      const mil = getMilCount();
+      if (total > rendered) {
+        el.textContent = `${rendered}/${total} aircraft (${mil} mil)`;
+      } else {
+        el.textContent = `${total} aircraft (${mil} mil)`;
+      }
+    }
   }
 
-  function setLabelsVisible(show) {
-    entities.forEach(e => {
-      if (e.label) e.label.show = show;
-    });
-  }
-
-  return { init, setVisible, isVisible, getCount, getMilCount, trackAircraft, clearTrack, setLabelsVisible };
+  return {
+    init, setVisible, isVisible, getCount, getTotalCount, getMilCount,
+    trackAircraft, clearTrack, setLabelsVisible,
+  };
 })();

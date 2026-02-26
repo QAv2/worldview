@@ -210,10 +210,21 @@ const Controls = (() => {
 
     handler.setInputAction((click) => {
       const picked = viewer.scene.pick(click.position);
-      if (!Cesium.defined(picked) || !picked.id || !picked.id.properties) return;
+      if (!Cesium.defined(picked) || !picked.id) return;
 
-      const props = picked.id.properties;
-      const type = props.type?.getValue ? props.type.getValue() : props.type;
+      // Handle both Entity picks (properties bag) and Primitive picks (plain object id)
+      let props, type;
+      if (picked.id.properties) {
+        // Entity API pick (satellites, earthquakes, bases, intel, cctv)
+        props = picked.id.properties;
+        type = props.type?.getValue ? props.type.getValue() : props.type;
+      } else if (picked.id && picked.id.type) {
+        // Primitive pick (aircraft PointPrimitiveCollection — id is a plain object)
+        props = picked.id;
+        type = props.type;
+      } else {
+        return;
+      }
 
       switch (type) {
         case 'earthquake':
