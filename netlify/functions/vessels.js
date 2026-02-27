@@ -101,6 +101,8 @@ function collectVessels(apiKey) {
         vessels.set(mmsi, {
           mmsi,
           name: (meta.ShipName || '').trim(),
+          callsign: (meta.CallSign || '').trim() || null,
+          shipType: meta.ShipType || pos.ShipType || null,
           lat: meta.latitude,
           lon: meta.longitude,
           speed: pos.Sog != null ? pos.Sog : null,

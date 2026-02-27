@@ -351,17 +351,20 @@ const Dossier = (() => {
 
     const navStatus = Vessels.getNavStatusText(status);
     const updateTime = lastUpdate ? new Date(lastUpdate).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : '—';
+    const typeColorHex = Vessels.getTypeColorHex(shipType);
+    const typeName = Vessels.getShipTypeName(shipType);
+    const flagEmoji = Vessels.countryToFlag(flag);
 
     let html = `
-      <div class="dossier-type-tag" style="background:var(--vessel-color)22;color:var(--vessel-color)">
-        naval vessel
+      <div class="dossier-type-tag" style="background:${typeColorHex}22;color:${typeColorHex}">
+        ${esc(typeName)}
       </div>
 
       ${name ? `<div class="dossier-field"><div class="dossier-field-label">Vessel Name</div><div class="dossier-field-value">${esc(String(name))}</div></div>` : ''}
       <div class="dossier-field"><div class="dossier-field-label">MMSI</div><div class="dossier-field-value">${esc(String(mmsi))}</div></div>
       ${callsign ? `<div class="dossier-field"><div class="dossier-field-label">Callsign</div><div class="dossier-field-value">${esc(String(callsign))}</div></div>` : ''}
-      ${flag ? `<div class="dossier-field"><div class="dossier-field-label">Flag</div><div class="dossier-field-value">${esc(String(flag))}</div></div>` : ''}
-      ${shipType != null ? `<div class="dossier-field"><div class="dossier-field-label">Ship Type</div><div class="dossier-field-value">${shipType}${shipType === 35 ? ' (Military)' : ''}</div></div>` : ''}
+      ${flag ? `<div class="dossier-field"><div class="dossier-field-label">Flag</div><div class="dossier-field-value">${flagEmoji ? flagEmoji + ' ' : ''}${esc(String(flag))}</div></div>` : ''}
+      ${shipType != null ? `<div class="dossier-field"><div class="dossier-field-label">Ship Type</div><div class="dossier-field-value">${esc(typeName)} (${shipType})</div></div>` : ''}
       <div class="dossier-field"><div class="dossier-field-label">Speed</div><div class="dossier-field-value">${speed != null ? Number(speed).toFixed(1) + ' kts' : '—'}</div></div>
       <div class="dossier-field"><div class="dossier-field-label">Course</div><div class="dossier-field-value">${course != null ? Number(course).toFixed(0) + '°' : '—'}</div></div>
       <div class="dossier-field"><div class="dossier-field-label">Heading</div><div class="dossier-field-value">${heading != null ? Number(heading).toFixed(0) + '°' : '—'}</div></div>

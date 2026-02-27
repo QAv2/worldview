@@ -5,6 +5,7 @@ const Globe = (() => {
   let currentBaseLayer = 'dark';
   let google3dTileset = null;
   const GOOGLE_API_KEY = '__GOOGLE_MAPS_API_KEY__';
+  const MAPTILER_API_KEY = '__MAPTILER_API_KEY__';
 
   // Available base layer providers
   const BASE_LAYERS = {
@@ -86,6 +87,15 @@ const Globe = (() => {
         webgl: { alpha: true },
       },
     });
+
+    // Async terrain load — non-blocking, falls back to flat if key missing
+    if (MAPTILER_API_KEY && !MAPTILER_API_KEY.startsWith('__')) {
+      Cesium.CesiumTerrainProvider.fromUrl(
+        `https://api.maptiler.com/tiles/terrain-quantized-mesh-v2/?key=${MAPTILER_API_KEY}`,
+        { requestVertexNormals: true }
+      ).then(tp => { viewer.terrainProvider = tp; requestRender(); })
+       .catch(err => console.warn('[Globe] MapTiler terrain failed:', err.message));
+    }
 
     // Dark scene settings
     const scene = viewer.scene;

@@ -21,13 +21,74 @@ const Vessels = (() => {
   const STALE_MS = 10 * 60 * 1000; // 10 min
   const PRUNE_INTERVAL = 60000;
 
+  // Ship type color map — cached Cesium.Color objects
+  const TYPE_COLORS = {
+    35: { hex: '#ef4444', name: 'Military Ops' },
+    55: { hex: '#06b6d4', name: 'Law Enforcement' },
+    50: { hex: '#a855f7', name: 'Pilot Vessel' },
+    51: { hex: '#f59e0b', name: 'Search & Rescue' },
+    52: { hex: '#84cc16', name: 'Tug' },
+    53: { hex: '#84cc16', name: 'Port Tender' },
+    58: { hex: '#f43f5e', name: 'Medical Transport' },
+  };
+  const DEFAULT_COLOR_HEX = '#3b82f6';
+
+  // Pre-cache Cesium colors per type
+  const typeColorCache = new Map();
+  for (const [code, info] of Object.entries(TYPE_COLORS)) {
+    typeColorCache.set(Number(code), {
+      point: Cesium.Color.fromCssColorString(info.hex).withAlpha(0.85),
+      outline: Cesium.Color.fromCssColorString(info.hex),
+      label: Cesium.Color.fromCssColorString(info.hex).withAlpha(0.7),
+      track: Cesium.Color.fromCssColorString(info.hex).withAlpha(0.4),
+    });
+  }
+  const defaultColors = {
+    point: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX).withAlpha(0.85),
+    outline: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX),
+    label: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX).withAlpha(0.7),
+    track: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX).withAlpha(0.4),
+  };
+
+  function getTypeColors(shipType) {
+    return typeColorCache.get(shipType) || defaultColors;
+  }
+
+  // Ship type name lookup
+  const SHIP_TYPE_NAMES = {
+    20: 'Wing in Ground', 21: 'WIG Carrying DG/HS/MP', 29: 'WIG (No info)',
+    30: 'Fishing', 31: 'Towing', 32: 'Towing (Large)', 33: 'Dredging/Underwater Ops',
+    34: 'Diving Operations', 35: 'Military Operations', 36: 'Sailing', 37: 'Pleasure Craft',
+    40: 'High Speed Craft', 41: 'HSC Carrying DG/HS/MP', 49: 'HSC (No info)',
+    50: 'Pilot Vessel', 51: 'Search & Rescue', 52: 'Tug', 53: 'Port Tender',
+    54: 'Anti-pollution', 55: 'Law Enforcement', 56: 'Spare (Local)', 57: 'Spare (Local)',
+    58: 'Medical Transport', 59: 'Noncombatant (RR No.18)',
+    60: 'Passenger', 69: 'Passenger (No info)',
+    70: 'Cargo', 79: 'Cargo (No info)',
+    80: 'Tanker', 89: 'Tanker (No info)',
+    90: 'Other', 99: 'Other (No info)',
+  };
+
+  function getShipTypeName(code) {
+    if (code == null) return 'Unknown';
+    return SHIP_TYPE_NAMES[code] || `Type ${code}`;
+  }
+
+  // Country code → flag emoji
+  function countryToFlag(code) {
+    if (!code || code === '??') return '';
+    return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
+  }
+
   // Cached Cesium objects
-  const VESSEL_COLOR = Cesium.Color.fromCssColorString('#3b82f6').withAlpha(0.85);
-  const VESSEL_OUTLINE = Cesium.Color.fromCssColorString('#3b82f6');
-  const VESSEL_LABEL_COLOR = Cesium.Color.fromCssColorString('#3b82f6').withAlpha(0.7);
   const LABEL_OFFSET = new Cesium.Cartesian2(0, -8);
   const LABEL_SCALE = new Cesium.NearFarScalar(1e5, 1, 5e6, 0.3);
   const POINT_SCALE = new Cesium.NearFarScalar(1e5, 1.0, 8e6, 0.4);
+
+  // Track history
+  const trackHistory = new Map(); // MMSI → [{lon, lat, time}]
+  const MAX_TRACK_POINTS = 50;
+  let trackDataSource = null;
 
   // AIS navigation status codes
   const NAV_STATUS = {
@@ -62,6 +123,10 @@ const Vessels = (() => {
     );
     labelCollection = viewer.scene.primitives.add(new Cesium.LabelCollection());
 
+    // Track history polylines
+    trackDataSource = new Cesium.CustomDataSource('vessel-tracks');
+    viewer.dataSources.add(trackDataSource);
+
     // First fetch immediately, then poll
     fetchVessels();
     pollTimer = setInterval(fetchVessels, POLL_INTERVAL);
@@ -84,6 +149,7 @@ const Vessels = (() => {
 
       const now = Date.now();
       for (const v of batch) {
+        const prev = vesselData.get(v.mmsi);
         vesselData.set(v.mmsi, {
           mmsi: v.mmsi,
           name: v.name || '',
@@ -98,6 +164,17 @@ const Vessels = (() => {
           status: v.status,
           lastUpdate: now,
         });
+
+        // Record track history (only when position changes)
+        if (!prev || prev.lat !== v.lat || prev.lon !== v.lon) {
+          let track = trackHistory.get(v.mmsi);
+          if (!track) {
+            track = [];
+            trackHistory.set(v.mmsi, track);
+          }
+          track.push({ lon: v.lon, lat: v.lat, time: now });
+          if (track.length > MAX_TRACK_POINTS) track.shift();
+        }
       }
 
       reconcileRender();
@@ -109,18 +186,28 @@ const Vessels = (() => {
     }
   }
 
+  function makeLabelText(vessel) {
+    const flag = countryToFlag(vessel.flag);
+    const name = vessel.name || String(vessel.mmsi);
+    return flag ? `${flag} ${name}` : name;
+  }
+
   function reconcileRender() {
     // Update existing / remove departed
     for (const [mmsi, point] of pointMap) {
       const vessel = vesselData.get(mmsi);
       if (vessel) {
+        const colors = getTypeColors(vessel.shipType);
         const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 100);
         point.position = pos;
+        point.color = colors.point;
+        point.outlineColor = colors.outline;
         point.id = makePickData(vessel);
         const label = labelMap.get(mmsi);
         if (label) {
           label.position = pos;
-          label.text = vessel.name || String(vessel.mmsi);
+          label.text = makeLabelText(vessel);
+          label.fillColor = colors.label;
           label.id = point.id;
         }
       } else {
@@ -138,14 +225,15 @@ const Vessels = (() => {
     for (const [mmsi, vessel] of vesselData) {
       if (pointMap.has(mmsi)) continue;
 
+      const colors = getTypeColors(vessel.shipType);
       const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 100);
       const pickData = makePickData(vessel);
 
       const point = pointCollection.add({
         position: pos,
         pixelSize: 6,
-        color: VESSEL_COLOR,
-        outlineColor: VESSEL_OUTLINE,
+        color: colors.point,
+        outlineColor: colors.outline,
         outlineWidth: 1,
         disableDepthTestDistance: 0,
         scaleByDistance: POINT_SCALE,
@@ -156,9 +244,9 @@ const Vessels = (() => {
 
       const label = labelCollection.add({
         position: pos,
-        text: vessel.name || String(vessel.mmsi),
+        text: makeLabelText(vessel),
         font: '10px monospace',
-        fillColor: VESSEL_LABEL_COLOR,
+        fillColor: colors.label,
         outlineColor: Cesium.Color.BLACK,
         outlineWidth: 1,
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
@@ -170,6 +258,27 @@ const Vessels = (() => {
         show: visible && labelsVisible,
       });
       labelMap.set(mmsi, label);
+    }
+
+    // Render track history polylines
+    if (trackDataSource) {
+      trackDataSource.entities.removeAll();
+      for (const [mmsi, track] of trackHistory) {
+        if (track.length < 2) continue;
+        const vessel = vesselData.get(mmsi);
+        if (!vessel) continue;
+        const colors = getTypeColors(vessel.shipType);
+        const positions = track.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 50));
+        trackDataSource.entities.add({
+          polyline: {
+            positions,
+            width: 1.5,
+            material: colors.track,
+            clampToGround: false,
+          },
+          show: visible,
+        });
+      }
     }
   }
 
@@ -197,6 +306,7 @@ const Vessels = (() => {
     for (const [mmsi, vessel] of vesselData) {
       if (now - vessel.lastUpdate > STALE_MS) {
         vesselData.delete(mmsi);
+        trackHistory.delete(mmsi);
         pruned++;
       }
     }
@@ -211,6 +321,9 @@ const Vessels = (() => {
     visible = v;
     if (pointCollection) pointCollection.show = v;
     if (labelCollection) labelCollection.show = v && labelsVisible;
+    if (trackDataSource) {
+      trackDataSource.entities.values.forEach(e => { e.show = v; });
+    }
     Globe.requestRender();
   }
 
@@ -238,6 +351,7 @@ const Vessels = (() => {
 
   return {
     init, setVisible, isVisible, getCount, setLabelsVisible,
-    getVesselByMMSI, getNavStatusText,
+    getVesselByMMSI, getNavStatusText, getShipTypeName, countryToFlag,
+    getTypeColorHex: (shipType) => (TYPE_COLORS[shipType]?.hex || DEFAULT_COLOR_HEX),
   };
 })();
