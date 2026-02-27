@@ -65,12 +65,13 @@ const Vessels = (() => {
   };
 
   function init(viewer) {
+    console.log('[Vessels] init() called, API_KEY length:', API_KEY.length, 'first4:', API_KEY.slice(0, 4));
     pointCollection = viewer.scene.primitives.add(
       new Cesium.PointPrimitiveCollection({ blendOption: Cesium.BlendOption.TRANSLUCENT })
     );
     labelCollection = viewer.scene.primitives.add(new Cesium.LabelCollection());
 
-    if (!API_KEY) {
+    if (!API_KEY || API_KEY === '__AISSTREAM_API_KEY__') {
       console.warn('[Vessels] No API key — vessel tracking disabled. Get one at https://aisstream.io');
       return;
     }
@@ -80,8 +81,15 @@ const Vessels = (() => {
     renderTimer = setInterval(flushPendingUpdates, RENDER_INTERVAL);
   }
 
+  let _msgCount = 0;
+
   function connectWebSocket() {
-    if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) return;
+    if (ws && (ws.readyState === WebSocket.CONNECTING || ws.readyState === WebSocket.OPEN)) {
+      console.log('[Vessels] WS already open/connecting, skipping');
+      return;
+    }
+
+    console.log('[Vessels] Creating WebSocket to', WS_URL);
 
     try {
       ws = new WebSocket(WS_URL);
@@ -92,27 +100,38 @@ const Vessels = (() => {
     }
 
     ws.onopen = () => {
-      console.log('[Vessels] WebSocket connected');
+      console.log('[Vessels] WebSocket connected, sending subscription...');
       reconnectDelay = 1000;
-      ws.send(JSON.stringify({
+      const sub = {
         APIKey: API_KEY,
         BoundingBoxes: [[[-90, -180], [90, 180]]],
         FilterMessageTypes: ['PositionReport'],
-      }));
+      };
+      ws.send(JSON.stringify(sub));
+      console.log('[Vessels] Subscription sent');
     };
 
     ws.onmessage = (event) => {
+      _msgCount++;
       try {
-        processMessage(JSON.parse(event.data));
-      } catch { /* ignore parse errors */ }
+        const msg = JSON.parse(event.data);
+        if (_msgCount <= 3) {
+          console.log('[Vessels] Raw msg #' + _msgCount + ':', JSON.stringify(msg).slice(0, 300));
+        }
+        processMessage(msg);
+      } catch (err) {
+        console.warn('[Vessels] Message parse/process error:', err.message);
+      }
     };
 
     ws.onclose = (event) => {
-      console.warn(`[Vessels] WebSocket closed (code ${event.code})`);
+      console.warn(`[Vessels] WebSocket closed (code ${event.code}, reason: ${event.reason})`);
       scheduleReconnect();
     };
 
-    ws.onerror = () => { /* onclose fires after this */ };
+    ws.onerror = (err) => {
+      console.warn('[Vessels] WebSocket error event fired');
+    };
   }
 
   function scheduleReconnect() {
@@ -135,8 +154,14 @@ const Vessels = (() => {
     return MID_FLAGS[String(mmsi).slice(0, 3)] || '??';
   }
 
+  let _processedCount = 0;
+  let _militaryCount = 0;
+
   function processMessage(msg) {
-    if (!msg.MetaData || !msg.Message?.PositionReport) return;
+    if (!msg.MetaData || !msg.Message?.PositionReport) {
+      if (_msgCount <= 5) console.log('[Vessels] Skipped (no MetaData/PositionReport):', Object.keys(msg));
+      return;
+    }
 
     const meta = msg.MetaData;
     const pos = msg.Message.PositionReport;
@@ -145,7 +170,17 @@ const Vessels = (() => {
     if (!mmsi || !meta.latitude || !meta.longitude) return;
     if (meta.latitude === 91 || meta.longitude === 181) return; // AIS "not available"
 
-    if (!isMilitary(mmsi, meta.ShipType || pos.ShipType)) return;
+    _processedCount++;
+    const mil = isMilitary(mmsi, meta.ShipType || pos.ShipType);
+    if (mil) _militaryCount++;
+    if (_processedCount <= 10 && mil) {
+      console.log('[Vessels] Military hit:', mmsi, meta.ShipName, 'lat:', meta.latitude, 'lon:', meta.longitude);
+    }
+    if (_processedCount === 50) {
+      console.log('[Vessels] Stats @ 50 msgs: total=' + _msgCount + ' processed=' + _processedCount + ' military=' + _militaryCount + ' pending=' + pendingUpdates.size);
+    }
+
+    if (!mil) return;
 
     pendingUpdates.set(mmsi, {
       mmsi,
@@ -166,6 +201,8 @@ const Vessels = (() => {
   function flushPendingUpdates() {
     if (pendingUpdates.size === 0) return;
 
+    console.log('[Vessels] Flushing', pendingUpdates.size, 'pending updates, vesselData size:', vesselData.size);
+
     for (const [mmsi, data] of pendingUpdates) {
       vesselData.set(mmsi, data);
     }
@@ -174,6 +211,8 @@ const Vessels = (() => {
     reconcileRender();
     updateStats();
     Globe.requestRender();
+
+    console.log('[Vessels] After flush: vesselData=' + vesselData.size + ' points=' + pointMap.size);
   }
 
   function reconcileRender() {
