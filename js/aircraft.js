@@ -25,7 +25,7 @@ const Aircraft = (() => {
   const POINT_SCALE = new Cesium.NearFarScalar(1e5, 1.0, 8e6, 0.4);
   const TRAIL_COLOR = Cesium.Color.fromCssColorString('#fb923c').withAlpha(0.5);
 
-  const MIL_URL = 'https://api.adsb.lol/v2/mil';
+  const MIL_URL = '/.netlify/functions/proxy?url=' + encodeURIComponent('https://api.adsb.lol/v2/mil');
   const REFRESH_MS = 15000;
   const MAX_FAILURES = 5;
 
