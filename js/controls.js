@@ -54,6 +54,7 @@ const Controls = (() => {
         container.querySelectorAll('.mode-btn').forEach(b => {
           b.classList.toggle('active', b.dataset.layerId === layer.id);
         });
+        if (typeof HashState !== 'undefined') HashState.update();
       });
       container.appendChild(btn);
     });
@@ -75,6 +76,7 @@ const Controls = (() => {
     document.querySelectorAll('#mode-buttons .mode-btn').forEach((btn, i) => {
       btn.classList.toggle('active', MODES[i].id === modeId);
     });
+    if (typeof HashState !== 'undefined') HashState.update();
   }
 
   function buildLayerToggles() {
@@ -102,6 +104,7 @@ const Controls = (() => {
     mod.setVisible(newState);
     const el = document.getElementById(`toggle-${layerId}`);
     if (el) el.classList.toggle('off', !newState);
+    if (typeof HashState !== 'undefined') HashState.update();
   }
 
   function buildPresetButtons() {
@@ -134,10 +137,10 @@ const Controls = (() => {
         const idx = parseInt(key) - 1;
         if (layerIds[idx]) {
           Globe.setBaseLayer(layerIds[idx]);
-          // Update button states
           document.querySelectorAll('#base-layer-buttons .mode-btn').forEach(b => {
             b.classList.toggle('active', b.dataset.layerId === layerIds[idx]);
           });
+          if (typeof HashState !== 'undefined') HashState.update();
         }
         return;
       }
@@ -205,6 +208,12 @@ const Controls = (() => {
       if (key === 'Tab') {
         e.preventDefault();
         document.getElementById('side-panel').classList.toggle('collapsed');
+      }
+
+      // Share URL
+      if (key.toLowerCase() === 's' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (typeof HashState !== 'undefined') HashState.copyUrl();
+        return;
       }
 
       // Help

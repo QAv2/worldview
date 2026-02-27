@@ -121,6 +121,22 @@ html, body {
   50% { opacity: 0.3; }
 }
 
+#share-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 10px;
+  padding: 2px 8px;
+  cursor: pointer;
+  letter-spacing: 0.1em;
+  transition: color 0.2s, border-color 0.2s;
+}
+#share-btn:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* ── Mode indicator ── */
 #mode-indicator {
   position: fixed;

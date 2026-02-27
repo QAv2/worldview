@@ -7,9 +7,16 @@ const App = (() => {
 
   async function boot() {
     try {
+      // Parse hash state before anything else
+      const hashState = HashState.parse();
+
       // Phase 1 — sequential core init
       setProgress('INITIALIZING CORE...', 10);
       const viewer = Globe.init();
+
+      // Apply camera from hash (overrides default US view)
+      if (hashState) HashState.applyCamera(hashState);
+
       setProgress('INITIALIZING CORE...', 20);
       Shaders.init();
       setProgress('INITIALIZING CORE...', 25);
@@ -45,6 +52,15 @@ const App = (() => {
       setProgress('INITIALIZING CONTROLS...', 95);
       await Controls.init();
       Timeline.init();
+
+      // Apply hash state after everything is initialized
+      if (hashState) {
+        HashState.applySettings(hashState);
+        HashState.applyLayers(hashState);
+      }
+
+      // Start hash state tracking
+      HashState.init();
 
       setProgress('SYSTEMS ONLINE', 100);
 
