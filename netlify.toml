@@ -1,5 +1,5 @@
 [build]
-  command = "sed -i \"s/__AISSTREAM_API_KEY__/$AISSTREAM_API_KEY/g\" js/vessels.js"
+  command = "sed -i \"s/__AISSTREAM_API_KEY__/$AISSTREAM_API_KEY/g\" js/vessels.js && sed -i \"s/__GOOGLE_MAPS_API_KEY__/$GOOGLE_MAPS_API_KEY/g\" js/globe.js"
   publish = "."
   functions = "netlify/functions"
 

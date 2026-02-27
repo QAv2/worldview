@@ -127,9 +127,9 @@ const Controls = (() => {
       const key = e.key;
 
       // Base layer shortcuts (Alt+1-5)
-      if (e.altKey && key >= '1' && key <= '5') {
+      if (e.altKey && key >= '1' && key <= '6') {
         e.preventDefault();
-        const layerIds = ['dark', 'satellite', 'terrain', 'osm', 'voyager'];
+        const layerIds = ['dark', 'satellite', 'terrain', 'osm', 'voyager', 'google3d'];
         const idx = parseInt(key) - 1;
         if (layerIds[idx]) {
           Globe.setBaseLayer(layerIds[idx]);
