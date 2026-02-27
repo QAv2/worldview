@@ -164,6 +164,8 @@ const Satellites = (() => {
     if (trackedSatId !== null) {
       drawOrbit(viewer, trackedSatId);
     }
+
+    Globe.requestRender();
   }
 
   function trackSat(viewer, satIndex) {
@@ -210,6 +212,7 @@ const Satellites = (() => {
     visible = v;
     entities.forEach(e => { e.show = v; });
     if (orbitEntity) orbitEntity.show = v;
+    Globe.requestRender();
   }
 
   function isVisible() { return visible; }

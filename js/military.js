@@ -23,6 +23,7 @@ const Military = (() => {
       baseData = await resp.json();
       renderBases(viewer);
       updateStats();
+      Globe.requestRender();
     } catch (err) {
       console.warn('[Military] Failed to load:', err.message);
     }
@@ -123,6 +124,7 @@ const Military = (() => {
   function setVisible(v) {
     visible = v;
     entities.forEach(e => { e.show = v; });
+    Globe.requestRender();
   }
 
   function isVisible() { return visible; }

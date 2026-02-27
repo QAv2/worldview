@@ -20,6 +20,7 @@ const Earthquakes = (() => {
       quakeData = data.features || [];
       renderQuakes(viewer);
       updateStats();
+      Globe.requestRender();
     } catch (err) {
       console.warn('[Earthquakes] Fetch failed:', err.message);
     }
@@ -88,6 +89,7 @@ const Earthquakes = (() => {
   function setVisible(v) {
     visible = v;
     entities.forEach(e => { e.show = v; });
+    Globe.requestRender();
   }
 
   function isVisible() { return visible; }

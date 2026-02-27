@@ -73,6 +73,7 @@ const Aircraft = (() => {
       consecutiveFailures = 0;
       reconcileRender(viewer);
       updateStats();
+      Globe.requestRender();
     } catch (err) {
       consecutiveFailures++;
       console.warn(`[Aircraft] Fetch failed (${consecutiveFailures}/${MAX_FAILURES}):`, err.message);
@@ -218,6 +219,7 @@ const Aircraft = (() => {
     if (pointCollection) pointCollection.show = v;
     if (labelCollection) labelCollection.show = v && labelsVisible;
     if (trailEntity) trailEntity.show = v;
+    Globe.requestRender();
   }
 
   function isVisible() { return visible; }

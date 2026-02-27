@@ -7,33 +7,40 @@ const App = (() => {
 
   async function boot() {
     try {
-      setProgress('INITIALIZING GLOBE...', 10);
+      // Phase 1 — sequential core init
+      setProgress('INITIALIZING CORE...', 10);
       const viewer = Globe.init();
-
-      setProgress('LOADING SHADERS...', 20);
+      setProgress('INITIALIZING CORE...', 20);
       Shaders.init();
-
-      setProgress('INITIALIZING DOSSIER...', 25);
+      setProgress('INITIALIZING CORE...', 25);
       Dossier.init();
 
-      setProgress('LOADING UNDERGROUND BASES...', 30);
-      await Bases.init(viewer);
+      // Phase 2 — parallel data layer loading
+      setProgress('LOADING DATA LAYERS...', 30);
+      const t0 = performance.now();
+      const results = await Promise.allSettled([
+        Bases.init(viewer),
+        Intel.init(viewer),
+        Earthquakes.init(viewer),
+        Satellites.init(viewer),
+        Aircraft.init(viewer),
+        Military.init(viewer),
+        Vessels.init(viewer),
+      ]);
+      const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+      console.log(`[WorldView] Data layers loaded in ${elapsed}s`);
 
-      setProgress('LOADING INTEL NETWORK...', 40);
-      await Intel.init(viewer);
+      // Log any failures
+      const layerNames = ['Bases', 'Intel', 'Earthquakes', 'Satellites', 'Aircraft', 'Military', 'Vessels'];
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.warn(`[WorldView] ${layerNames[i]} failed:`, r.reason);
+        }
+      });
 
-      setProgress('FETCHING EARTHQUAKE DATA...', 50);
-      await Earthquakes.init(viewer);
+      setProgress('LOADING DATA LAYERS...', 90);
 
-      setProgress('TRACKING SATELLITES...', 65);
-      await Satellites.init(viewer);
-
-      setProgress('SCANNING AIRCRAFT...', 75);
-      await Aircraft.init(viewer);
-
-      setProgress('LOADING MILITARY BASES...', 85);
-      await Military.init(viewer);
-
+      // Phase 3 — controls (depends on layers being ready)
       setProgress('INITIALIZING CONTROLS...', 95);
       await Controls.init();
 

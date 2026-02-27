@@ -92,7 +92,8 @@ const Globe = (() => {
     if (scene.skyBox) scene.skyBox.show = false;
 
     scene.globe.enableLighting = false;
-    scene.requestRenderMode = false;
+    scene.requestRenderMode = true;
+    scene.maximumRenderTimeChange = Infinity;
 
     // Initial camera — US overview
     viewer.camera.setView({
@@ -135,6 +136,8 @@ const Globe = (() => {
       if (scene.moon) scene.moon.show = true;
       scene.globe.enableLighting = true;
     }
+
+    requestRender();
   }
 
   function getBaseLayerId() {
@@ -175,5 +178,9 @@ const Globe = (() => {
     };
   }
 
-  return { init, flyTo, getViewer, getMouseCoords, setBaseLayer, getBaseLayerId, getBaseLayerList };
+  function requestRender() {
+    if (viewer) viewer.scene.requestRender();
+  }
+
+  return { init, flyTo, getViewer, getMouseCoords, setBaseLayer, getBaseLayerId, getBaseLayerList, requestRender };
 })();

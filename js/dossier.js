@@ -332,6 +332,49 @@ const Dossier = (() => {
     Bases.clearCorrelation(Globe.getViewer());
   }
 
+  function showVessel(props) {
+    currentId = null;
+    const mmsi = props.mmsi?.getValue ? props.mmsi.getValue() : props.mmsi;
+    const name = props.name?.getValue ? props.name.getValue() : props.name;
+    const callsign = props.callsign?.getValue ? props.callsign.getValue() : props.callsign;
+    const shipType = props.shipType?.getValue ? props.shipType.getValue() : props.shipType;
+    const flag = props.flag?.getValue ? props.flag.getValue() : props.flag;
+    const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+    const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+    const speed = props.speed?.getValue ? props.speed.getValue() : props.speed;
+    const course = props.course?.getValue ? props.course.getValue() : props.course;
+    const heading = props.heading?.getValue ? props.heading.getValue() : props.heading;
+    const status = props.status?.getValue ? props.status.getValue() : props.status;
+    const lastUpdate = props.lastUpdate?.getValue ? props.lastUpdate.getValue() : props.lastUpdate;
+
+    titleEl.textContent = name || `MMSI ${mmsi}`;
+
+    const navStatus = Vessels.getNavStatusText(status);
+    const updateTime = lastUpdate ? new Date(lastUpdate).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : '—';
+
+    let html = `
+      <div class="dossier-type-tag" style="background:var(--vessel-color)22;color:var(--vessel-color)">
+        naval vessel
+      </div>
+
+      ${name ? `<div class="dossier-field"><div class="dossier-field-label">Vessel Name</div><div class="dossier-field-value">${esc(String(name))}</div></div>` : ''}
+      <div class="dossier-field"><div class="dossier-field-label">MMSI</div><div class="dossier-field-value">${esc(String(mmsi))}</div></div>
+      ${callsign ? `<div class="dossier-field"><div class="dossier-field-label">Callsign</div><div class="dossier-field-value">${esc(String(callsign))}</div></div>` : ''}
+      ${flag ? `<div class="dossier-field"><div class="dossier-field-label">Flag</div><div class="dossier-field-value">${esc(String(flag))}</div></div>` : ''}
+      ${shipType != null ? `<div class="dossier-field"><div class="dossier-field-label">Ship Type</div><div class="dossier-field-value">${shipType}${shipType === 35 ? ' (Military)' : ''}</div></div>` : ''}
+      <div class="dossier-field"><div class="dossier-field-label">Speed</div><div class="dossier-field-value">${speed != null ? Number(speed).toFixed(1) + ' kts' : '—'}</div></div>
+      <div class="dossier-field"><div class="dossier-field-label">Course</div><div class="dossier-field-value">${course != null ? Number(course).toFixed(0) + '°' : '—'}</div></div>
+      <div class="dossier-field"><div class="dossier-field-label">Heading</div><div class="dossier-field-value">${heading != null ? Number(heading).toFixed(0) + '°' : '—'}</div></div>
+      <div class="dossier-field"><div class="dossier-field-label">Nav Status</div><div class="dossier-field-value">${esc(navStatus)}</div></div>
+      <div class="dossier-field"><div class="dossier-field-label">Coordinates</div><div class="dossier-field-value">${lat != null ? Number(lat).toFixed(4) : '—'}, ${lon != null ? Number(lon).toFixed(4) : '—'}</div></div>
+      <div class="dossier-field"><div class="dossier-field-label">Last Update</div><div class="dossier-field-value">${updateTime}</div></div>
+    `;
+
+    bodyEl.innerHTML = html;
+    panel.classList.add('open');
+    Bases.clearCorrelation(Globe.getViewer());
+  }
+
   function close() {
     panel.classList.remove('open');
     currentId = null;
@@ -359,5 +402,5 @@ const Dossier = (() => {
     return div.innerHTML;
   }
 
-  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, close, isOpen };
+  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, showVessel, close, isOpen };
 })();

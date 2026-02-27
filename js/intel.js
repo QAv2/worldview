@@ -32,6 +32,7 @@ const Intel = (() => {
   async function init(viewer) {
     intelData = INTEL_ENTITIES;
     renderEntities(viewer);
+    Globe.requestRender();
   }
 
   function renderEntities(viewer) {
@@ -90,6 +91,7 @@ const Intel = (() => {
     visible = v;
     entities.forEach(e => { e.show = v; });
     connectionEntities.forEach(e => { e.show = v; });
+    Globe.requestRender();
   }
 
   function isVisible() { return visible; }

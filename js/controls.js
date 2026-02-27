@@ -11,6 +11,7 @@ const Controls = (() => {
     { id: 'bases', name: 'Underground Bases', color: 'var(--base-color)', key: 'F4', module: () => Bases },
     { id: 'military', name: 'Military Bases', color: 'var(--military-color)', key: 'F5', module: () => Military },
     { id: 'intel', name: 'Intel Network', color: 'var(--accent)', key: 'F6', module: () => Intel },
+    { id: 'vessels', name: 'Naval Vessels', color: 'var(--vessel-color)', key: 'F7', module: () => Vessels },
   ];
 
   const MODES = [
@@ -170,6 +171,7 @@ const Controls = (() => {
         Bases.setLabelsVisible(labelsVisible);
         Military.setLabelsVisible(labelsVisible);
         Intel.setLabelsVisible(labelsVisible);
+        Vessels.setLabelsVisible(labelsVisible);
         document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
       }
 
@@ -251,6 +253,9 @@ const Controls = (() => {
           const entityId = props.id?.getValue ? props.id.getValue() : props.id;
           Dossier.showIntel(entityId);
           break;
+        case 'vessel':
+          Dossier.showVessel(props);
+          break;
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
@@ -277,6 +282,7 @@ const Controls = (() => {
       Bases.setLabelsVisible(labelsVisible);
       Military.setLabelsVisible(labelsVisible);
       Intel.setLabelsVisible(labelsVisible);
+      Vessels.setLabelsVisible(labelsVisible);
       document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
     });
 
@@ -314,6 +320,7 @@ const Controls = (() => {
       bases: Bases.getCount(),
       military: Military.getCount(),
       intel: Intel.getCount(),
+      vessels: Vessels.getCount(),
     };
 
     Object.entries(counts).forEach(([id, count]) => {
