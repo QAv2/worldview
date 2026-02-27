@@ -71,7 +71,7 @@ const Vessels = (() => {
     );
     labelCollection = viewer.scene.primitives.add(new Cesium.LabelCollection());
 
-    if (!API_KEY || API_KEY === '__AISSTREAM_API_KEY__') {
+    if (!API_KEY || API_KEY.startsWith('__')) {
       console.warn('[Vessels] No API key — vessel tracking disabled. Get one at https://aisstream.io');
       return;
     }
