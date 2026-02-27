@@ -8,8 +8,8 @@ const Controls = (() => {
     { id: 'earthquakes', name: 'Earthquakes', color: 'var(--quake-shallow)', key: 'F1', module: () => Earthquakes },
     { id: 'satellites', name: 'Satellites', color: 'var(--sat-color)', key: 'F2', module: () => Satellites },
     { id: 'aircraft', name: 'Aircraft', color: 'var(--aircraft-civil)', key: 'F3', module: () => Aircraft },
-    { id: 'cctv', name: 'CCTV Cameras', color: 'var(--cctv-color)', key: 'F4', module: () => CCTV },
-    { id: 'bases', name: 'Underground Bases', color: 'var(--base-color)', key: 'F5', module: () => Bases },
+    { id: 'bases', name: 'Underground Bases', color: 'var(--base-color)', key: 'F4', module: () => Bases },
+    { id: 'military', name: 'Military Bases', color: 'var(--military-color)', key: 'F5', module: () => Military },
     { id: 'intel', name: 'Intel Network', color: 'var(--accent)', key: 'F6', module: () => Intel },
   ];
 
@@ -167,8 +167,8 @@ const Controls = (() => {
         Earthquakes.setLabelsVisible(labelsVisible);
         Satellites.setLabelsVisible(labelsVisible);
         Aircraft.setLabelsVisible(labelsVisible);
-        CCTV.setLabelsVisible(labelsVisible);
         Bases.setLabelsVisible(labelsVisible);
+        Military.setLabelsVisible(labelsVisible);
         Intel.setLabelsVisible(labelsVisible);
         document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
       }
@@ -195,7 +195,6 @@ const Controls = (() => {
       // Escape — close panels
       if (key === 'Escape') {
         Dossier.close();
-        CCTV.hideFeed();
         document.getElementById('help-overlay').classList.remove('visible');
       }
     });
@@ -215,7 +214,7 @@ const Controls = (() => {
       // Handle both Entity picks (properties bag) and Primitive picks (plain object id)
       let props, type;
       if (picked.id.properties) {
-        // Entity API pick (satellites, earthquakes, bases, intel, cctv)
+        // Entity API pick (satellites, earthquakes, bases, military, intel)
         props = picked.id.properties;
         type = props.type?.getValue ? props.type.getValue() : props.type;
       } else if (picked.id && picked.id.type) {
@@ -240,8 +239,9 @@ const Controls = (() => {
           const hex = props.hex?.getValue ? props.hex.getValue() : props.hex;
           if (hex) Aircraft.trackAircraft(viewer, hex);
           break;
-        case 'cctv':
-          CCTV.showFeed(props);
+        case 'military':
+          const milId = props.id?.getValue ? props.id.getValue() : props.id;
+          Dossier.showMilitary(milId);
           break;
         case 'base':
           const baseId = props.id?.getValue ? props.id.getValue() : props.id;
@@ -274,8 +274,8 @@ const Controls = (() => {
       Earthquakes.setLabelsVisible(labelsVisible);
       Satellites.setLabelsVisible(labelsVisible);
       Aircraft.setLabelsVisible(labelsVisible);
-      CCTV.setLabelsVisible(labelsVisible);
       Bases.setLabelsVisible(labelsVisible);
+      Military.setLabelsVisible(labelsVisible);
       Intel.setLabelsVisible(labelsVisible);
       document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
     });
@@ -287,7 +287,6 @@ const Controls = (() => {
       document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
     });
 
-    document.getElementById('cctv-close').addEventListener('click', () => CCTV.hideFeed());
   }
 
   function startClock() {
@@ -312,8 +311,8 @@ const Controls = (() => {
       earthquakes: Earthquakes.getCount(),
       satellites: Satellites.getCount(),
       aircraft: Aircraft.getCount(),
-      cctv: CCTV.getCount(),
       bases: Bases.getCount(),
+      military: Military.getCount(),
       intel: Intel.getCount(),
     };
 

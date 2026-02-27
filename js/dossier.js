@@ -104,6 +104,68 @@ const Dossier = (() => {
     });
   }
 
+  function showMilitary(baseId) {
+    const base = Military.getBaseById(baseId);
+    if (!base) return;
+
+    currentId = baseId;
+    titleEl.textContent = base.name;
+
+    const branchColors = {
+      army: '#8b5cf6',
+      navy: '#3b82f6',
+      air_force: '#06b6d4',
+      marines: '#ef4444',
+      space_force: '#a855f7',
+      joint: '#f59e0b',
+      intelligence: '#ec4899',
+      foreign_military: '#6b7280',
+    };
+    const branchColor = branchColors[base.branch] || '#6b7280';
+    const branchLabel = base.branch ? base.branch.replace(/_/g, ' ') : 'unknown';
+    const typeLabel = base.type ? base.type.replace(/_/g, ' ') : 'unknown';
+
+    let html = `
+      <div class="dossier-type-tag" style="background:${branchColor}22;color:${branchColor}">
+        ${branchLabel}
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Installation Type</div>
+        <div class="dossier-field-value">${esc(typeLabel)}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Operator</div>
+        <div class="dossier-field-value">${esc(base.operator)}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Country</div>
+        <div class="dossier-field-value">${esc(base.country)}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Status</div>
+        <div class="dossier-field-value">${esc(base.status)}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Coordinates</div>
+        <div class="dossier-field-value">${base.lat.toFixed(4)}, ${base.lon.toFixed(4)}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Notes</div>
+        <div class="dossier-field-value">${esc(base.notes)}</div>
+      </div>
+    `;
+
+    bodyEl.innerHTML = html;
+    panel.classList.add('open');
+    Bases.clearCorrelation(Globe.getViewer());
+  }
+
   function showIntel(entityId) {
     const ent = Intel.getEntityById(entityId);
     if (!ent) return;
@@ -297,5 +359,5 @@ const Dossier = (() => {
     return div.innerHTML;
   }
 
-  return { init, showBase, showIntel, showEarthquake, showAircraft, showSatellite, close, isOpen };
+  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, close, isOpen };
 })();

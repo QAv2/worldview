@@ -23,7 +23,7 @@
   --quake-shallow: #fbbf24;
   --quake-deep: #f87171;
   --base-color: #c084fc;
-  --cctv-color: #34d399;
+  --military-color: #06b6d4;
 
   --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
   --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -438,41 +438,6 @@ html, body {
   font-size: 11px;
   color: var(--text-secondary);
   padding: 3px 0;
-}
-
-/* ── CCTV Overlay ── */
-#cctv-overlay {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 640px;
-  max-width: 90vw;
-  background: var(--surface-solid);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  z-index: 1100;
-  display: none;
-}
-
-#cctv-overlay.visible { display: block; }
-
-#cctv-overlay .cctv-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--border);
-}
-
-#cctv-overlay .cctv-header h3 {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-#cctv-overlay img {
-  width: 100%;
-  display: block;
 }
 
 /* ── Stats Bar (Bottom) ── */

@@ -25,10 +25,6 @@ exports.handler = async (event) => {
   const allowed = [
     'celestrak.org',
     'api.adsb.lol',
-    'api.tfl.gov.uk',
-    'tie.digitraffic.fi',
-    'cwwp2.dot.ca.gov',
-    'data.austintexas.gov',
   ];
 
   let parsed;

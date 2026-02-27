@@ -28,11 +28,11 @@ const App = (() => {
       setProgress('TRACKING SATELLITES...', 65);
       await Satellites.init(viewer);
 
-      setProgress('SCANNING AIRCRAFT...', 80);
+      setProgress('SCANNING AIRCRAFT...', 75);
       await Aircraft.init(viewer);
 
-      setProgress('CONNECTING CCTV FEEDS...', 90);
-      await CCTV.init(viewer);
+      setProgress('LOADING MILITARY BASES...', 85);
+      await Military.init(viewer);
 
       setProgress('INITIALIZING CONTROLS...', 95);
       await Controls.init();
