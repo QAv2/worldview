@@ -7,6 +7,7 @@ const Satellites = (() => {
   let trackedSatId = null;
   let orbitEntity = null;
   let consecutiveFailures = 0;
+  let timeOverride = null; // null = LIVE, epoch ms = override
   const MAX_SATS = 500; // limit for performance
   const MAX_FAILURES = 2;
 
@@ -149,7 +150,7 @@ const Satellites = (() => {
 
   function updatePositions(viewer) {
     if (!visible) return;
-    const now = new Date();
+    const now = timeOverride !== null ? new Date(timeOverride) : new Date();
 
     entities.forEach((entity, i) => {
       if (i >= satRecords.length) return;
@@ -229,5 +230,14 @@ const Satellites = (() => {
     });
   }
 
-  return { init, setVisible, isVisible, getCount, trackSat, clearTrack, setLabelsVisible };
+  function setTime(epochMs) {
+    timeOverride = epochMs;
+    // Immediately reposition satellites to the new time
+    const v = Globe.getViewer();
+    if (v && entities.length > 0) {
+      updatePositions(v);
+    }
+  }
+
+  return { init, setVisible, isVisible, getCount, trackSat, clearTrack, setLabelsVisible, setTime };
 })();

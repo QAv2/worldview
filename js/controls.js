@@ -12,6 +12,7 @@ const Controls = (() => {
     { id: 'military', name: 'Military Bases', color: 'var(--military-color)', key: 'F5', module: () => Military },
     { id: 'intel', name: 'Intel Network', color: 'var(--accent)', key: 'F6', module: () => Intel },
     { id: 'vessels', name: 'Naval Vessels', color: 'var(--vessel-color)', key: 'F7', module: () => Vessels },
+    { id: 'traffic', name: 'Traffic Flow', color: 'var(--traffic-color)', key: 'F8', module: () => Traffic },
   ];
 
   const MODES = [
@@ -147,6 +148,22 @@ const Controls = (() => {
       if (key === '2') setMode('nvg');
       if (key === '3') setMode('flir');
 
+      // Timeline controls (T must be before preset check to override Pine Gap)
+      if (key.toLowerCase() === 't' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (typeof Timeline !== 'undefined') {
+          Timeline.setVisible(!Timeline.isTimelineVisible());
+        }
+        return;
+      }
+      if (key === '[') { if (typeof Timeline !== 'undefined') Timeline.stepBack(); return; }
+      if (key === ']') { if (typeof Timeline !== 'undefined') Timeline.stepForward(); return; }
+      if (key === '\\') { if (typeof Timeline !== 'undefined') Timeline.togglePlay(); return; }
+      if (key === 'Backspace' && !e.ctrlKey) {
+        e.preventDefault();
+        if (typeof Timeline !== 'undefined') Timeline.resetToLive();
+        return;
+      }
+
       // Camera presets
       const preset = presets.find(p => p.key.toLowerCase() === key.toLowerCase());
       if (preset && !e.ctrlKey && !e.metaKey && !e.altKey) {
@@ -172,6 +189,7 @@ const Controls = (() => {
         Military.setLabelsVisible(labelsVisible);
         Intel.setLabelsVisible(labelsVisible);
         Vessels.setLabelsVisible(labelsVisible);
+        Traffic.setLabelsVisible(labelsVisible);
         document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
       }
 
@@ -283,6 +301,7 @@ const Controls = (() => {
       Military.setLabelsVisible(labelsVisible);
       Intel.setLabelsVisible(labelsVisible);
       Vessels.setLabelsVisible(labelsVisible);
+      Traffic.setLabelsVisible(labelsVisible);
       document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
     });
 
@@ -321,6 +340,7 @@ const Controls = (() => {
       military: Military.getCount(),
       intel: Intel.getCount(),
       vessels: Vessels.getCount(),
+      traffic: Traffic.getCount(),
     };
 
     Object.entries(counts).forEach(([id, count]) => {

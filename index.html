@@ -97,6 +97,17 @@
   <!-- Mode Indicator -->
   <div id="mode-indicator"></div>
 
+  <!-- Timeline Bar -->
+  <div id="timeline-bar" class="hidden">
+    <button id="timeline-play" class="timeline-btn" title="Play/Pause [\\]">&#9654;</button>
+    <div class="timeline-track">
+      <span class="timeline-label-left">7d ago</span>
+      <input type="range" id="timeline-slider" step="60000">
+      <span class="timeline-label-right" id="timeline-date">NOW</span>
+    </div>
+    <span class="timeline-status live" id="timeline-status">LIVE</span>
+  </div>
+
   <!-- Stats Bar -->
   <div id="stats-bar">
     <div class="stat-item"><div class="stat-dot" style="background:var(--quake-shallow)"></div><span id="stat-quakes">—</span></div>
@@ -105,6 +116,7 @@
     <div class="stat-item"><div class="stat-dot" style="background:var(--base-color)"></div><span id="stat-bases">—</span></div>
     <div class="stat-item"><div class="stat-dot" style="background:var(--military-color)"></div><span id="stat-military">—</span></div>
     <div class="stat-item"><div class="stat-dot" style="background:var(--vessel-color)"></div><span id="stat-vessels">—</span></div>
+    <div class="stat-item"><div class="stat-dot" style="background:var(--traffic-color)"></div><span id="stat-traffic">—</span></div>
   </div>
 
   <!-- Help Overlay -->
@@ -126,11 +138,18 @@
     <div class="help-row"><span class="help-desc">Dulce Complex</span><span class="help-key">W</span></div>
     <div class="help-row"><span class="help-desc">Area 51</span><span class="help-key">E</span></div>
     <div class="help-row"><span class="help-desc">Denver Airport</span><span class="help-key">R</span></div>
-    <div class="help-row"><span class="help-desc">Pine Gap</span><span class="help-key">T</span></div>
+    <div class="help-row"><span class="help-desc">Pine Gap</span><span class="help-key">Y</span></div>
     <div class="help-row"><span class="help-desc">Global View</span><span class="help-key">G</span></div>
     <div class="help-row"><span class="help-desc">COG Network</span><span class="help-key">C</span></div>
     <div class="help-row"><span class="help-desc">NM Corridor</span><span class="help-key">N</span></div>
     <div class="help-row"><span class="help-desc">Naval Vessels</span><span class="help-key">F7</span></div>
+    <div class="help-row"><span class="help-desc">Traffic Flow</span><span class="help-key">F8</span></div>
+    <hr style="border-color:var(--border);margin:8px 0">
+    <div class="help-row"><span class="help-desc">Toggle Timeline</span><span class="help-key">T</span></div>
+    <div class="help-row"><span class="help-desc">Step Back 1h</span><span class="help-key">[</span></div>
+    <div class="help-row"><span class="help-desc">Step Forward 1h</span><span class="help-key">]</span></div>
+    <div class="help-row"><span class="help-desc">Play / Pause</span><span class="help-key">\</span></div>
+    <div class="help-row"><span class="help-desc">Reset to LIVE</span><span class="help-key">Bksp</span></div>
     <hr style="border-color:var(--border);margin:8px 0">
     <div class="help-row"><span class="help-desc">Toggle Labels</span><span class="help-key">L</span></div>
     <div class="help-row"><span class="help-desc">Toggle Crosshair</span><span class="help-key">X</span></div>
@@ -149,6 +168,8 @@
   <script src="js/military.js"></script>
   <script src="js/intel.js"></script>
   <script src="js/vessels.js"></script>
+  <script src="js/traffic.js"></script>
+  <script src="js/timeline.js"></script>
   <script src="js/dossier.js"></script>
   <script src="js/controls.js"></script>
   <script src="js/app.js"></script>

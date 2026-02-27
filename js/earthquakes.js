@@ -5,8 +5,9 @@ const Earthquakes = (() => {
   let entities = [];
   let visible = true;
   let quakeData = [];
-  const FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_day.geojson';
+  const FEED_URL = 'https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/2.5_week.geojson';
   const REFRESH_MS = 60000; // 1 minute
+  let timeFilter = null; // null = LIVE (show all), epoch ms = filter
 
   async function init(viewer) {
     await fetchQuakes(viewer);
@@ -88,7 +89,11 @@ const Earthquakes = (() => {
 
   function setVisible(v) {
     visible = v;
-    entities.forEach(e => { e.show = v; });
+    if (timeFilter !== null) {
+      applyTimeFilter();
+    } else {
+      entities.forEach(e => { e.show = v; });
+    }
     Globe.requestRender();
   }
 
@@ -133,5 +138,36 @@ const Earthquakes = (() => {
     });
   }
 
-  return { init, setVisible, isVisible, getData, getEntities, getCount, getNearby, setLabelsVisible };
+  function setTime(epochMs) {
+    timeFilter = epochMs;
+    applyTimeFilter();
+    Globe.requestRender();
+  }
+
+  function applyTimeFilter() {
+    entities.forEach((entity, i) => {
+      if (i >= quakeData.length) return;
+      const quakeTime = quakeData[i].properties.time;
+      if (timeFilter === null) {
+        // LIVE — show all, full alpha
+        entity.show = visible;
+        if (entity.point) {
+          const origAlpha = 0.7;
+          entity.point.color = entity.point.color.getValue().withAlpha(origAlpha);
+        }
+      } else {
+        // REPLAY — only show quakes before current time
+        const shouldShow = quakeTime <= timeFilter;
+        entity.show = visible && shouldShow;
+        if (shouldShow && entity.point) {
+          // Recent quakes (within 1h of scrub time) full alpha, older ones dim
+          const age = timeFilter - quakeTime;
+          const alpha = age < 3600000 ? 0.8 : 0.35;
+          entity.point.color = entity.point.color.getValue().withAlpha(alpha);
+        }
+      }
+    });
+  }
+
+  return { init, setVisible, isVisible, getData, getEntities, getCount, getNearby, setLabelsVisible, setTime };
 })();

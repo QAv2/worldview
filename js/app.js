@@ -26,12 +26,13 @@ const App = (() => {
         Aircraft.init(viewer),
         Military.init(viewer),
         Vessels.init(viewer),
+        Traffic.init(viewer),
       ]);
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       console.log(`[WorldView] Data layers loaded in ${elapsed}s`);
 
       // Log any failures
-      const layerNames = ['Bases', 'Intel', 'Earthquakes', 'Satellites', 'Aircraft', 'Military', 'Vessels'];
+      const layerNames = ['Bases', 'Intel', 'Earthquakes', 'Satellites', 'Aircraft', 'Military', 'Vessels', 'Traffic'];
       results.forEach((r, i) => {
         if (r.status === 'rejected') {
           console.warn(`[WorldView] ${layerNames[i]} failed:`, r.reason);
@@ -43,6 +44,7 @@ const App = (() => {
       // Phase 3 — controls (depends on layers being ready)
       setProgress('INITIALIZING CONTROLS...', 95);
       await Controls.init();
+      Timeline.init();
 
       setProgress('SYSTEMS ONLINE', 100);
 
