@@ -17,8 +17,8 @@ const Vessels = (() => {
   let renderTimer = null;
   let pendingUpdates = new Map();
 
-  // aisstream.io API key — sign up at https://aisstream.io to get one
-  const API_KEY = '';
+  // aisstream.io API key — injected at build time from Netlify env var
+  const API_KEY = '__AISSTREAM_API_KEY__';
   const WS_URL = 'wss://stream.aisstream.io/v0/stream';
   const STALE_MS = 10 * 60 * 1000; // 10 min
   const PRUNE_INTERVAL = 60000;

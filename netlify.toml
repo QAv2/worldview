@@ -1,4 +1,5 @@
 [build]
+  command = "sed -i \"s/__AISSTREAM_API_KEY__/$AISSTREAM_API_KEY/g\" js/vessels.js"
   publish = "."
   functions = "netlify/functions"
 
