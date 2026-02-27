@@ -120,6 +120,71 @@
     <div class="stat-item"><div class="stat-dot" style="background:var(--traffic-color)"></div><span id="stat-traffic">—</span></div>
   </div>
 
+  <!-- Landing Overlay -->
+  <div id="landing-overlay">
+    <div class="landing-card">
+      <div class="landing-header">
+        <div class="landing-title">WORLDVIEW</div>
+        <div class="landing-subtitle">INTEL GLOBE</div>
+        <div class="landing-desc">Real-time geospatial intelligence dashboard. Monitor military movements, seismic activity, satellite positions, and naval operations across the globe.</div>
+      </div>
+
+      <div class="landing-columns">
+        <div class="landing-col">
+          <div class="landing-section-title">Data Layers</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--quake-shallow)"></span><span class="landing-key">F1</span> Earthquakes</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--sat-color)"></span><span class="landing-key">F2</span> Satellites</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--aircraft-mil)"></span><span class="landing-key">F3</span> Military Aircraft</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--base-color)"></span><span class="landing-key">F4</span> Underground Bases</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--military-color)"></span><span class="landing-key">F5</span> Military Installations</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--accent)"></span><span class="landing-key">F6</span> Intel Network</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--vessel-color)"></span><span class="landing-key">F7</span> Naval Vessels</div>
+          <div class="landing-layer"><span class="landing-dot" style="background:var(--traffic-color)"></span><span class="landing-key">F8</span> Traffic Flow</div>
+
+          <div class="landing-section-title" style="margin-top:16px">Vessel Types</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="diamond" data-color="#ef4444" width="16" height="16"></canvas> Military Ops</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="pentagon" data-color="#06b6d4" width="16" height="16"></canvas> Law Enforcement</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="circle" data-color="#a855f7" width="16" height="16"></canvas> Pilot Vessel</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="plus" data-color="#f59e0b" width="16" height="16"></canvas> Search &amp; Rescue</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="triangle" data-color="#84cc16" width="16" height="16"></canvas> Tug / Tender</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="medical" data-color="#f43f5e" width="16" height="16"></canvas> Medical Transport</div>
+          <div class="landing-layer"><canvas class="landing-icon" data-shape="dot" data-color="#3b82f6" width="16" height="16"></canvas> Other Vessel</div>
+        </div>
+
+        <div class="landing-col">
+          <div class="landing-section-title">Navigation</div>
+          <div class="landing-row"><span class="landing-label">Click marker</span><span class="landing-val">Open dossier</span></div>
+          <div class="landing-row"><span class="landing-label">Scroll / Drag</span><span class="landing-val">Zoom / Pan</span></div>
+          <div class="landing-row"><span class="landing-label">Right-drag</span><span class="landing-val">Tilt / Rotate</span></div>
+
+          <div class="landing-section-title" style="margin-top:16px">Visual Modes</div>
+          <div class="landing-row"><span class="landing-key">0</span><span class="landing-val">Normal</span></div>
+          <div class="landing-row"><span class="landing-key">1</span><span class="landing-val">CRT Scanline</span></div>
+          <div class="landing-row"><span class="landing-key">2</span><span class="landing-val">Night Vision</span></div>
+          <div class="landing-row"><span class="landing-key">3</span><span class="landing-val">FLIR Thermal</span></div>
+
+          <div class="landing-section-title" style="margin-top:16px">Controls</div>
+          <div class="landing-row"><span class="landing-key">Alt+1-6</span><span class="landing-val">Switch base maps</span></div>
+          <div class="landing-row"><span class="landing-key">L</span><span class="landing-val">Toggle labels</span></div>
+          <div class="landing-row"><span class="landing-key">Tab</span><span class="landing-val">Toggle side panel</span></div>
+          <div class="landing-row"><span class="landing-key">T</span><span class="landing-val">Timeline scrubber</span></div>
+          <div class="landing-row"><span class="landing-key">S</span><span class="landing-val">Share view URL</span></div>
+          <div class="landing-row"><span class="landing-key">X</span><span class="landing-val">Crosshair</span></div>
+          <div class="landing-row"><span class="landing-key">?</span><span class="landing-val">Keyboard help</span></div>
+
+          <div class="landing-section-title" style="margin-top:16px">Camera Presets</div>
+          <div class="landing-row"><span class="landing-key">Q</span><span class="landing-val">US Overview</span></div>
+          <div class="landing-row"><span class="landing-key">W</span><span class="landing-val">Dulce</span></div>
+          <div class="landing-row"><span class="landing-key">E</span><span class="landing-val">Area 51</span></div>
+          <div class="landing-row"><span class="landing-key">R</span><span class="landing-val">Denver</span></div>
+          <div class="landing-row"><span class="landing-key">G</span><span class="landing-val">Global</span></div>
+        </div>
+      </div>
+
+      <div class="landing-footer">PRESS ANY KEY TO CONTINUE</div>
+    </div>
+  </div>
+
   <!-- Help Overlay -->
   <div id="help-overlay">
     <h3>Keyboard Shortcuts</h3>

@@ -3,13 +3,20 @@
 // The Netlify Function at /.netlify/functions/vessels connects server-side,
 // collects ~4 seconds of AIS data, filters for military vessels, returns JSON.
 // This client polls the function every 30 seconds.
+//
+// Performance notes:
+// - BillboardCollection for type-specific icons (single GPU draw call)
+// - PolylineCollection for track history (Primitive API, delta updates)
+// - No Entity API usage — avoids heavyweight tracked objects
 
 const Vessels = (() => {
-  let pointCollection = null;
+  let billboardCollection = null;
   let labelCollection = null;
-  const pointMap = new Map();   // MMSI -> PointPrimitive
-  const labelMap = new Map();   // MMSI -> Label
-  const vesselData = new Map(); // MMSI -> vessel object
+  let trackPolylines = null;
+  const billboardMap = new Map();     // MMSI -> Billboard
+  const labelMap = new Map();         // MMSI -> Label
+  const vesselData = new Map();       // MMSI -> vessel object
+  const trackPolylineMap = new Map(); // MMSI -> Polyline
 
   let visible = true;
   let labelsVisible = true;
@@ -21,7 +28,7 @@ const Vessels = (() => {
   const STALE_MS = 10 * 60 * 1000; // 10 min
   const PRUNE_INTERVAL = 60000;
 
-  // Ship type color map — cached Cesium.Color objects
+  // === Ship type color map ===
   const TYPE_COLORS = {
     35: { hex: '#ef4444', name: 'Military Ops' },
     55: { hex: '#06b6d4', name: 'Law Enforcement' },
@@ -33,19 +40,15 @@ const Vessels = (() => {
   };
   const DEFAULT_COLOR_HEX = '#3b82f6';
 
-  // Pre-cache Cesium colors per type
+  // Pre-cache Cesium colors for labels and tracks
   const typeColorCache = new Map();
   for (const [code, info] of Object.entries(TYPE_COLORS)) {
     typeColorCache.set(Number(code), {
-      point: Cesium.Color.fromCssColorString(info.hex).withAlpha(0.85),
-      outline: Cesium.Color.fromCssColorString(info.hex),
       label: Cesium.Color.fromCssColorString(info.hex).withAlpha(0.7),
       track: Cesium.Color.fromCssColorString(info.hex).withAlpha(0.4),
     });
   }
   const defaultColors = {
-    point: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX).withAlpha(0.85),
-    outline: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX),
     label: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX).withAlpha(0.7),
     track: Cesium.Color.fromCssColorString(DEFAULT_COLOR_HEX).withAlpha(0.4),
   };
@@ -54,7 +57,139 @@ const Vessels = (() => {
     return typeColorCache.get(shipType) || defaultColors;
   }
 
-  // Ship type name lookup
+  // === Icon generation — canvas shapes per ship type ===
+  const ICON_SIZE = 24;
+  const ICON_SHAPES = {
+    35: 'diamond',    // Military — ◆
+    55: 'pentagon',   // Law Enforcement — ⬠
+    50: 'circle',     // Pilot — ●
+    51: 'plus',       // SAR — ✚
+    52: 'triangle',   // Tug — ▲
+    53: 'triangle',   // Port Tender — ▲
+    58: 'medical',    // Medical — ● with ✚
+  };
+
+  const iconCache = new Map();
+
+  function buildIconCache() {
+    for (const [code, info] of Object.entries(TYPE_COLORS)) {
+      const shape = ICON_SHAPES[code] || 'dot';
+      iconCache.set(Number(code), drawIcon(shape, info.hex));
+    }
+    iconCache.set('default', drawIcon('dot', DEFAULT_COLOR_HEX));
+  }
+
+  function getIcon(shipType) {
+    return iconCache.get(shipType) || iconCache.get('default');
+  }
+
+  function drawIcon(shape, colorHex) {
+    const s = ICON_SIZE;
+    const canvas = document.createElement('canvas');
+    canvas.width = s;
+    canvas.height = s;
+    const ctx = canvas.getContext('2d');
+    const cx = s / 2;
+    const cy = s / 2;
+    const r = s / 2 - 2;
+
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 2;
+    ctx.fillStyle = colorHex;
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 1;
+
+    switch (shape) {
+      case 'diamond':
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx + r, cy);
+        ctx.lineTo(cx, cy + r);
+        ctx.lineTo(cx - r, cy);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'pentagon':
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+          const a = -Math.PI / 2 + (i * 2 * Math.PI / 5);
+          const px = cx + r * Math.cos(a);
+          const py = cy + r * Math.sin(a);
+          i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'circle':
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'plus': {
+        const w = 5;
+        ctx.beginPath();
+        ctx.moveTo(cx - w / 2, cy - r);
+        ctx.lineTo(cx + w / 2, cy - r);
+        ctx.lineTo(cx + w / 2, cy - w / 2);
+        ctx.lineTo(cx + r, cy - w / 2);
+        ctx.lineTo(cx + r, cy + w / 2);
+        ctx.lineTo(cx + w / 2, cy + w / 2);
+        ctx.lineTo(cx + w / 2, cy + r);
+        ctx.lineTo(cx - w / 2, cy + r);
+        ctx.lineTo(cx - w / 2, cy + w / 2);
+        ctx.lineTo(cx - r, cy + w / 2);
+        ctx.lineTo(cx - r, cy - w / 2);
+        ctx.lineTo(cx - w / 2, cy - w / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+      }
+
+      case 'triangle':
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - r);
+        ctx.lineTo(cx + r * 0.9, cy + r * 0.7);
+        ctx.lineTo(cx - r * 0.9, cy + r * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        break;
+
+      case 'medical':
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#ffffff';
+        const cw = 4;
+        const cr = r - 4;
+        ctx.fillRect(cx - cw / 2, cy - cr, cw, cr * 2);
+        ctx.fillRect(cx - cr, cy - cw / 2, cr * 2, cw);
+        break;
+
+      default: // 'dot'
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        break;
+    }
+
+    return canvas;
+  }
+
+  // Build icon cache immediately
+  buildIconCache();
+
+  // === Ship type names ===
   const SHIP_TYPE_NAMES = {
     20: 'Wing in Ground', 21: 'WIG Carrying DG/HS/MP', 29: 'WIG (No info)',
     30: 'Fishing', 31: 'Towing', 32: 'Towing (Large)', 33: 'Dredging/Underwater Ops',
@@ -80,15 +215,14 @@ const Vessels = (() => {
     return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 + c.charCodeAt(0) - 65));
   }
 
-  // Cached Cesium objects
-  const LABEL_OFFSET = new Cesium.Cartesian2(0, -8);
+  // Cached layout constants
+  const LABEL_OFFSET = new Cesium.Cartesian2(0, -10);
   const LABEL_SCALE = new Cesium.NearFarScalar(1e5, 1, 5e6, 0.3);
-  const POINT_SCALE = new Cesium.NearFarScalar(1e5, 1.0, 8e6, 0.4);
+  const BB_SCALE = new Cesium.NearFarScalar(1e5, 1.0, 8e6, 0.4);
 
   // Track history
   const trackHistory = new Map(); // MMSI → [{lon, lat, time}]
   const MAX_TRACK_POINTS = 50;
-  let trackDataSource = null;
 
   // AIS navigation status codes
   const NAV_STATUS = {
@@ -99,7 +233,7 @@ const Vessels = (() => {
     12: 'Pushing/towing', 14: 'AIS-SART', 15: 'Not defined',
   };
 
-  // Country flag from MID (first 3 digits of MMSI)
+  // MID → country code
   const MID_FLAGS = {
     '211': 'DE', '226': 'FR', '227': 'FR', '228': 'FR',
     '230': 'FI', '232': 'GB', '233': 'GB', '234': 'GB', '235': 'GB',
@@ -117,15 +251,11 @@ const Vessels = (() => {
     return MID_FLAGS[String(mmsi).slice(0, 3)] || '??';
   }
 
+  // === Init ===
   function init(viewer) {
-    pointCollection = viewer.scene.primitives.add(
-      new Cesium.PointPrimitiveCollection({ blendOption: Cesium.BlendOption.TRANSLUCENT })
-    );
+    billboardCollection = viewer.scene.primitives.add(new Cesium.BillboardCollection());
     labelCollection = viewer.scene.primitives.add(new Cesium.LabelCollection());
-
-    // Track history polylines
-    trackDataSource = new Cesium.CustomDataSource('vessel-tracks');
-    viewer.dataSources.add(trackDataSource);
+    trackPolylines = viewer.scene.primitives.add(new Cesium.PolylineCollection());
 
     // First fetch immediately, then poll
     fetchVessels();
@@ -193,26 +323,25 @@ const Vessels = (() => {
   }
 
   function reconcileRender() {
-    // Update existing / remove departed
-    for (const [mmsi, point] of pointMap) {
+    // Update existing / remove departed billboards
+    for (const [mmsi, billboard] of billboardMap) {
       const vessel = vesselData.get(mmsi);
       if (vessel) {
         const colors = getTypeColors(vessel.shipType);
         const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 100);
-        point.position = pos;
-        point.color = colors.point;
-        point.outlineColor = colors.outline;
-        point.id = makePickData(vessel);
+        billboard.position = pos;
+        billboard.image = getIcon(vessel.shipType);
+        billboard.id = makePickData(vessel);
         const label = labelMap.get(mmsi);
         if (label) {
           label.position = pos;
           label.text = makeLabelText(vessel);
           label.fillColor = colors.label;
-          label.id = point.id;
+          label.id = billboard.id;
         }
       } else {
-        pointCollection.remove(point);
-        pointMap.delete(mmsi);
+        billboardCollection.remove(billboard);
+        billboardMap.delete(mmsi);
         const label = labelMap.get(mmsi);
         if (label) {
           labelCollection.remove(label);
@@ -221,26 +350,24 @@ const Vessels = (() => {
       }
     }
 
-    // Add new
+    // Add new billboards
     for (const [mmsi, vessel] of vesselData) {
-      if (pointMap.has(mmsi)) continue;
+      if (billboardMap.has(mmsi)) continue;
 
       const colors = getTypeColors(vessel.shipType);
       const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 100);
       const pickData = makePickData(vessel);
 
-      const point = pointCollection.add({
+      const billboard = billboardCollection.add({
         position: pos,
-        pixelSize: 6,
-        color: colors.point,
-        outlineColor: colors.outline,
-        outlineWidth: 1,
+        image: getIcon(vessel.shipType),
+        scale: 0.5,
         disableDepthTestDistance: 0,
-        scaleByDistance: POINT_SCALE,
+        scaleByDistance: BB_SCALE,
         id: pickData,
         show: visible,
       });
-      pointMap.set(mmsi, point);
+      billboardMap.set(mmsi, billboard);
 
       const label = labelCollection.add({
         position: pos,
@@ -260,25 +387,38 @@ const Vessels = (() => {
       labelMap.set(mmsi, label);
     }
 
-    // Render track history polylines
-    if (trackDataSource) {
-      trackDataSource.entities.removeAll();
-      for (const [mmsi, track] of trackHistory) {
-        if (track.length < 2) continue;
-        const vessel = vesselData.get(mmsi);
-        if (!vessel) continue;
-        const colors = getTypeColors(vessel.shipType);
-        const positions = track.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 50));
-        trackDataSource.entities.add({
-          polyline: {
-            positions,
-            width: 1.5,
-            material: colors.track,
-            clampToGround: false,
-          },
-          show: visible,
-        });
+    // Delta-update track polylines (no removeAll rebuild)
+    updateTrackPolylines();
+  }
+
+  function updateTrackPolylines() {
+    // Update existing track polylines
+    for (const [mmsi, polyline] of trackPolylineMap) {
+      const track = trackHistory.get(mmsi);
+      const vessel = vesselData.get(mmsi);
+      if (track && track.length >= 2 && vessel) {
+        polyline.positions = track.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 50));
+        polyline.show = visible;
+      } else {
+        trackPolylines.remove(polyline);
+        trackPolylineMap.delete(mmsi);
       }
+    }
+
+    // Add polylines for new tracks
+    for (const [mmsi, track] of trackHistory) {
+      if (track.length < 2 || trackPolylineMap.has(mmsi)) continue;
+      const vessel = vesselData.get(mmsi);
+      if (!vessel) continue;
+      const colors = getTypeColors(vessel.shipType);
+      const positions = track.map(p => Cesium.Cartesian3.fromDegrees(p.lon, p.lat, 50));
+      const polyline = trackPolylines.add({
+        positions,
+        width: 1.5,
+        material: Cesium.Material.fromType('Color', { color: colors.track }),
+        show: visible,
+      });
+      trackPolylineMap.set(mmsi, polyline);
     }
   }
 
@@ -319,10 +459,12 @@ const Vessels = (() => {
 
   function setVisible(v) {
     visible = v;
-    if (pointCollection) pointCollection.show = v;
+    if (billboardCollection) billboardCollection.show = v;
     if (labelCollection) labelCollection.show = v && labelsVisible;
-    if (trackDataSource) {
-      trackDataSource.entities.values.forEach(e => { e.show = v; });
+    if (trackPolylines) {
+      for (let i = 0; i < trackPolylines.length; i++) {
+        trackPolylines.get(i).show = v;
+      }
     }
     Globe.requestRender();
   }
@@ -334,7 +476,7 @@ const Vessels = (() => {
     if (labelCollection) labelCollection.show = visible && show;
   }
 
-  function getCount() { return pointMap.size; }
+  function getCount() { return billboardMap.size; }
 
   function getVesselByMMSI(mmsi) {
     return vesselData.get(mmsi) || null;
@@ -346,7 +488,7 @@ const Vessels = (() => {
 
   function updateStats() {
     const el = document.getElementById('stat-vessels');
-    if (el) el.textContent = `${pointMap.size} vessels`;
+    if (el) el.textContent = `${billboardMap.size} vessels`;
   }
 
   return {
