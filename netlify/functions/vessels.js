@@ -7,10 +7,16 @@ const WebSocket = require('ws');
 
 const WS_URL = 'wss://stream.aisstream.io/v0/stream';
 const COLLECT_MS = 4000; // collect data for 4 seconds
-const MIL_MMSI_PREFIXES = ['3669', '232', '233', '273', '412', '413'];
+// US Navy uses dedicated MMSI range 3669xxxxx.
+// Other navies share country MID codes with commercial vessels —
+// no prefix can distinguish military from civilian.
+// Ship type 35 (Military Ops) and 55 (Law Enforcement / Coast Guard)
+// are the reliable universal identifiers for non-US military.
+const MIL_MMSI_PREFIXES = ['3669'];
+const MIL_SHIP_TYPES = [35, 55];
 
 function isMilitary(mmsi, shipType) {
-  if (shipType === 35) return true;
+  if (MIL_SHIP_TYPES.includes(shipType)) return true;
   const s = String(mmsi);
   return MIL_MMSI_PREFIXES.some(p => s.startsWith(p));
 }
