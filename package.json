@@ -7,5 +7,7 @@
     "dev": "npx serve . -p 8080",
     "deploy": "netlify deploy --prod"
   },
-  "dependencies": {}
+  "dependencies": {
+    "ws": "^8.19.0"
+  }
 }
