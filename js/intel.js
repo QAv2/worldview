@@ -56,7 +56,7 @@ const Intel = (() => {
           color: Cesium.Color.fromCssColorString(color).withAlpha(0.8),
           outlineColor: Cesium.Color.fromCssColorString(color),
           outlineWidth: 2,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
         label: {
@@ -68,7 +68,7 @@ const Intel = (() => {
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -10),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           show: true,
           scaleByDistance: new Cesium.NearFarScalar(1e5, 1, 3e6, 0.4),
         },

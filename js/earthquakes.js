@@ -56,7 +56,7 @@ const Earthquakes = (() => {
           color: color.withAlpha(0.7),
           outlineColor: color,
           outlineWidth: 1,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
         label: {
@@ -68,7 +68,7 @@ const Earthquakes = (() => {
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -size - 4),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           show: true,
         },
         properties: {

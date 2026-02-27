@@ -98,6 +98,7 @@ const Globe = (() => {
     if (scene.skyBox) scene.skyBox.show = false;
 
     scene.globe.enableLighting = false;
+    scene.globe.depthTestAgainstTerrain = true;
     scene.requestRenderMode = true;
     scene.maximumRenderTimeChange = Infinity;
 

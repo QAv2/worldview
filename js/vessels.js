@@ -114,7 +114,7 @@ const Vessels = (() => {
     for (const [mmsi, point] of pointMap) {
       const vessel = vesselData.get(mmsi);
       if (vessel) {
-        const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 0);
+        const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 100);
         point.position = pos;
         point.id = makePickData(vessel);
         const label = labelMap.get(mmsi);
@@ -138,7 +138,7 @@ const Vessels = (() => {
     for (const [mmsi, vessel] of vesselData) {
       if (pointMap.has(mmsi)) continue;
 
-      const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 0);
+      const pos = Cesium.Cartesian3.fromDegrees(vessel.lon, vessel.lat, 100);
       const pickData = makePickData(vessel);
 
       const point = pointCollection.add({
@@ -147,7 +147,7 @@ const Vessels = (() => {
         color: VESSEL_COLOR,
         outlineColor: VESSEL_OUTLINE,
         outlineWidth: 1,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        disableDepthTestDistance: 0,
         scaleByDistance: POINT_SCALE,
         id: pickData,
         show: visible,
@@ -164,7 +164,7 @@ const Vessels = (() => {
         style: Cesium.LabelStyle.FILL_AND_OUTLINE,
         verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
         pixelOffset: LABEL_OFFSET,
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        disableDepthTestDistance: 0,
         scaleByDistance: LABEL_SCALE,
         id: pickData,
         show: visible && labelsVisible,

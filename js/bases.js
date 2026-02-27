@@ -41,7 +41,7 @@ const Bases = (() => {
           width: 20,
           height: 20,
           verticalOrigin: Cesium.VerticalOrigin.CENTER,
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
         },
         label: {
@@ -53,7 +53,7 @@ const Bases = (() => {
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.TOP,
           pixelOffset: new Cesium.Cartesian2(0, 14),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           show: true,
           scaleByDistance: new Cesium.NearFarScalar(1e5, 1, 5e6, 0.4),
         },

@@ -45,7 +45,7 @@ const Traffic = (() => {
       // Build Cartesian positions for this segment
       const positions = [];
       for (let i = 0; i < seg.length; i++) {
-        positions.push(Cesium.Cartesian3.fromDegrees(seg[i][0], seg[i][1]));
+        positions.push(Cesium.Cartesian3.fromDegrees(seg[i][0], seg[i][1], 100));
       }
 
       // Add polyline
@@ -61,7 +61,7 @@ const Traffic = (() => {
         position: positions[0],
         pixelSize: PARTICLE_SIZE,
         color: COLOR.withAlpha(PARTICLE_ALPHA),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        disableDepthTestDistance: 0,
         show: visible,
       });
       particleData.push({ point: p1, segIdx: idx, progress: 0, direction: 1 });
@@ -70,7 +70,7 @@ const Traffic = (() => {
         position: positions[positions.length - 1],
         pixelSize: PARTICLE_SIZE,
         color: COLOR.withAlpha(PARTICLE_ALPHA),
-        disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        disableDepthTestDistance: 0,
         show: visible,
       });
       particleData.push({ point: p2, segIdx: idx, progress: 1, direction: -1 });
@@ -80,19 +80,19 @@ const Traffic = (() => {
   function interpolatePosition(seg, t) {
     // t is 0→1 along the segment
     const totalPts = seg.length;
-    if (totalPts < 2) return Cesium.Cartesian3.fromDegrees(seg[0][0], seg[0][1]);
+    if (totalPts < 2) return Cesium.Cartesian3.fromDegrees(seg[0][0], seg[0][1], 100);
 
     const fIdx = t * (totalPts - 1);
     const i = Math.floor(fIdx);
     const frac = fIdx - i;
 
     if (i >= totalPts - 1) {
-      return Cesium.Cartesian3.fromDegrees(seg[totalPts - 1][0], seg[totalPts - 1][1]);
+      return Cesium.Cartesian3.fromDegrees(seg[totalPts - 1][0], seg[totalPts - 1][1], 100);
     }
 
     const lon = seg[i][0] + (seg[i + 1][0] - seg[i][0]) * frac;
     const lat = seg[i][1] + (seg[i + 1][1] - seg[i][1]) * frac;
-    return Cesium.Cartesian3.fromDegrees(lon, lat);
+    return Cesium.Cartesian3.fromDegrees(lon, lat, 100);
   }
 
   function startAnimation() {

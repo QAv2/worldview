@@ -115,7 +115,7 @@ const Satellites = (() => {
         point: {
           pixelSize: 3,
           color: Cesium.Color.fromCssColorString('#60a5fa').withAlpha(0.8),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
         },
         label: {
           text: sat.name,
@@ -126,7 +126,7 @@ const Satellites = (() => {
           style: Cesium.LabelStyle.FILL_AND_OUTLINE,
           verticalOrigin: Cesium.VerticalOrigin.BOTTOM,
           pixelOffset: new Cesium.Cartesian2(0, -6),
-          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+          disableDepthTestDistance: 0,
           show: false, // hidden by default, toggle with L
           scaleByDistance: new Cesium.NearFarScalar(1e6, 1, 5e6, 0.4),
         },
