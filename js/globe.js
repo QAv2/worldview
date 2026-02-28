@@ -4,8 +4,8 @@ const Globe = (() => {
   let viewer = null;
   let currentBaseLayer = 'dark';
   let google3dTileset = null;
-  const GOOGLE_API_KEY = '__GOOGLE_MAPS_API_KEY__';
-  const MAPTILER_API_KEY = '__MAPTILER_API_KEY__';
+  let GOOGLE_API_KEY = '';
+  let MAPTILER_API_KEY = '';
 
   // Available base layer providers
   const BASE_LAYERS = {
@@ -54,6 +54,19 @@ const Globe = (() => {
     },
   };
 
+  async function loadConfig() {
+    try {
+      const resp = await fetch('/.netlify/functions/config');
+      if (resp.ok) {
+        const cfg = await resp.json();
+        GOOGLE_API_KEY = cfg.googleMapsApiKey || '';
+        MAPTILER_API_KEY = cfg.maptilerApiKey || '';
+      }
+    } catch (err) {
+      console.warn('[Globe] Config fetch failed, API features disabled:', err.message);
+    }
+  }
+
   function init() {
     // No Ion token — use open tile sources only
     Cesium.Ion.defaultAccessToken = undefined;
@@ -88,14 +101,16 @@ const Globe = (() => {
       },
     });
 
-    // Async terrain load — non-blocking, falls back to flat if key missing
-    if (MAPTILER_API_KEY && !MAPTILER_API_KEY.startsWith('__')) {
-      Cesium.CesiumTerrainProvider.fromUrl(
-        `https://api.maptiler.com/tiles/terrain-quantized-mesh-v2/?key=${MAPTILER_API_KEY}`,
-        { requestVertexNormals: true }
-      ).then(tp => { viewer.terrainProvider = tp; requestRender(); })
-       .catch(err => console.warn('[Globe] MapTiler terrain failed:', err.message));
-    }
+    // Fetch API keys then load terrain — non-blocking
+    loadConfig().then(() => {
+      if (MAPTILER_API_KEY) {
+        Cesium.CesiumTerrainProvider.fromUrl(
+          `https://api.maptiler.com/tiles/terrain-quantized-mesh-v2/?key=${MAPTILER_API_KEY}`,
+          { requestVertexNormals: true }
+        ).then(tp => { viewer.terrainProvider = tp; requestRender(); })
+         .catch(err => console.warn('[Globe] MapTiler terrain failed:', err.message));
+      }
+    });
 
     // Dark scene settings
     const scene = viewer.scene;
@@ -130,7 +145,7 @@ const Globe = (() => {
 
   async function loadGoogle3d() {
     if (google3dTileset) return;
-    if (!GOOGLE_API_KEY || GOOGLE_API_KEY.startsWith('__')) {
+    if (!GOOGLE_API_KEY) {
       console.warn('[Globe] Google Maps API key not configured');
       return;
     }
