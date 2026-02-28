@@ -171,6 +171,9 @@ const Intel = (() => {
 
     if (consoleSignals.length === 0) return;
 
+    // Pre-cache pulse base color (avoids Color.fromCssColorString per frame)
+    const PULSE_BASE = Cesium.Color.fromCssColorString('#f59e0b');
+
     // Group signals by location (lat/lon key)
     const locGroups = {};
     consoleSignals.forEach(s => {
@@ -193,26 +196,26 @@ const Intel = (() => {
       const baseAlpha = isRecent ? 0.6 : 0.25;
       const baseRadius = isRecent ? 25000 : 15000;
 
-      // Animated pulse ring
-      let phase = Math.random() * Math.PI * 2; // stagger phase
+      const phase = Math.random() * Math.PI * 2;
+      // Pre-allocate scratch color — mutated in place each frame (zero allocation)
+      const scratchColor = PULSE_BASE.clone();
+
+      // Single shared callback for both semi-axes (identical value, halves callback count)
+      const axisCallback = new Cesium.CallbackProperty(() => {
+        const t = (Date.now() % 3000) / 3000;
+        return baseRadius + Math.sin(t * Math.PI * 2 + phase) * baseRadius * 0.5;
+      }, false);
+
       const pulseEntity = viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(loc.lon, loc.lat),
         ellipse: {
-          semiMajorAxis: new Cesium.CallbackProperty(() => {
-            const t = (Date.now() % 3000) / 3000;
-            const wave = Math.sin((t * Math.PI * 2) + phase);
-            return baseRadius + wave * baseRadius * 0.5;
-          }, false),
-          semiMinorAxis: new Cesium.CallbackProperty(() => {
-            const t = (Date.now() % 3000) / 3000;
-            const wave = Math.sin((t * Math.PI * 2) + phase);
-            return baseRadius + wave * baseRadius * 0.5;
-          }, false),
+          semiMajorAxis: axisCallback,
+          semiMinorAxis: axisCallback,
           material: new Cesium.ColorMaterialProperty(
             new Cesium.CallbackProperty(() => {
               const t = (Date.now() % 3000) / 3000;
-              const alpha = baseAlpha * (0.3 + 0.7 * Math.abs(Math.sin((t * Math.PI) + phase)));
-              return Cesium.Color.fromCssColorString('#f59e0b').withAlpha(alpha);
+              scratchColor.alpha = baseAlpha * (0.3 + 0.7 * Math.abs(Math.sin(t * Math.PI + phase)));
+              return scratchColor;
             }, false)
           ),
           heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
