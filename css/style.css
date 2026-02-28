@@ -1027,6 +1027,71 @@ body.timeline-open #coords {
   .landing-card { padding: 20px 24px; }
 }
 
+/* ── Signal Feed (Intel Console dossier) ── */
+.signal-feed {
+  margin-top: 6px;
+}
+
+.signal-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.signal-item:last-child {
+  border-bottom: none;
+}
+
+.signal-feed-badge {
+  display: inline-block;
+  padding: 1px 6px;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  background: var(--accent-dim);
+  color: var(--text-secondary);
+  border-radius: 3px;
+  margin-right: 6px;
+}
+
+.signal-headline {
+  color: var(--text-secondary);
+  text-decoration: none;
+}
+
+.signal-headline:hover {
+  color: var(--accent);
+}
+
+.signal-time {
+  display: block;
+  font-size: 9px;
+  color: var(--text-tertiary);
+  margin-top: 2px;
+}
+
+.console-link {
+  display: block;
+  margin-top: 16px;
+  padding: 8px 12px;
+  text-align: center;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  text-decoration: none;
+  transition: background 0.2s, color 0.2s;
+}
+
+.console-link:hover {
+  background: var(--accent-dim);
+  color: var(--text-primary);
+}
+
 /* ── Responsive ── */
 @media (max-width: 768px) {
   #side-panel { width: 220px; }

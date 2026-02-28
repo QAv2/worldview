@@ -173,6 +173,18 @@ const Dossier = (() => {
     currentId = entityId;
     titleEl.textContent = ent.name;
 
+    // Branch on source
+    if (ent.source === 'intel-console') {
+      showConsoleIntel(ent);
+    } else {
+      showCuratedIntel(ent);
+    }
+
+    panel.classList.add('open');
+    Bases.clearCorrelation(Globe.getViewer());
+  }
+
+  function showCuratedIntel(ent) {
     const tierColor = getTierColor(ent.tier);
     const typeColors = {
       facility: '#4a9eff',
@@ -206,10 +218,75 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+  }
 
-    // Clear any base correlation
-    Bases.clearCorrelation(Globe.getViewer());
+  function showConsoleIntel(ent) {
+    const consoleColors = {
+      facility: '#f59e0b',
+      organization: '#ec4899',
+      agency: '#ef4444',
+      person: '#a78bfa',
+    };
+    const typeColor = consoleColors[ent.type] || '#f59e0b';
+
+    const signals = Intel.getSignalsForEntity(ent.id);
+
+    let html = `
+      <div class="dossier-type-tag" style="background:${typeColor}22;color:${typeColor}">
+        ${ent.type}
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Evidence Tier</div>
+        <div class="dossier-field-value">
+          <span class="tier-badge ${ent.tier}">${ent.tier}</span>
+        </div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Coordinates</div>
+        <div class="dossier-field-value">${ent.lat.toFixed(4)}, ${ent.lon.toFixed(4)}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Network Centrality</div>
+        <div class="dossier-field-value">${(ent.centrality || 0).toFixed(4)} (${ent.connection_count || 0} connections)</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Description</div>
+        <div class="dossier-field-value">${esc(ent.description)}</div>
+      </div>
+    `;
+
+    // Recent signals
+    if (signals.length > 0) {
+      const shown = signals.slice(0, 5);
+      html += `
+        <div class="dossier-field">
+          <div class="dossier-field-label">Recent Signals (${signals.length})</div>
+          <div class="signal-feed">
+            ${shown.map(s => {
+              const time = s.collected_at ? new Date(s.collected_at).toISOString().replace('T', ' ').slice(0, 16) : '';
+              return `<div class="signal-item">
+                <span class="signal-feed-badge">${esc(s.source_feed)}</span>
+                <a class="signal-headline" href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.headline)}</a>
+                <span class="signal-time">${time}</span>
+              </div>`;
+            }).join('')}
+          </div>
+        </div>
+      `;
+    }
+
+    // Console link
+    html += `
+      <a class="console-link" href="https://qav2.github.io/intel-console/" target="_blank" rel="noopener">
+        Open in Intel Console
+      </a>
+    `;
+
+    bodyEl.innerHTML = html;
   }
 
   function showEarthquake(props) {
