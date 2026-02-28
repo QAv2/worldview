@@ -10,7 +10,7 @@ const Intel = (() => {
   let pulseInterval = null;
   let viewerRef = null;
 
-  const INTEL_CONSOLE_BASE = 'https://qav2.github.io/intel-console/data';
+  const INTEL_CONSOLE_BASE = 'https://qav2.github.io/intel-console/static/data';
 
   // Curated disclosure entities — blue family, string IDs
   const INTEL_ENTITIES = [
