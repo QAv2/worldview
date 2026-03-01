@@ -13,6 +13,7 @@ const Controls = (() => {
     { id: 'intel', name: 'Intel Network', color: 'var(--accent)', key: 'F6', module: () => Intel },
     { id: 'vessels', name: 'Naval Vessels', color: 'var(--vessel-color)', key: 'F7', module: () => Vessels },
     { id: 'traffic', name: 'Traffic Flow', color: 'var(--traffic-color)', key: 'F8', module: () => Traffic },
+    { id: 'conflicts', name: 'Conflict Events', color: 'var(--conflict-color)', key: 'F9', module: () => Conflicts },
   ];
 
   const MODES = [
@@ -193,6 +194,7 @@ const Controls = (() => {
         Intel.setLabelsVisible(labelsVisible);
         Vessels.setLabelsVisible(labelsVisible);
         Traffic.setLabelsVisible(labelsVisible);
+        Conflicts.setLabelsVisible(labelsVisible);
         document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
       }
 
@@ -283,6 +285,9 @@ const Controls = (() => {
         case 'vessel':
           Dossier.showVessel(props);
           break;
+        case 'conflict':
+          Dossier.showConflict(props);
+          break;
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
@@ -311,6 +316,7 @@ const Controls = (() => {
       Intel.setLabelsVisible(labelsVisible);
       Vessels.setLabelsVisible(labelsVisible);
       Traffic.setLabelsVisible(labelsVisible);
+      Conflicts.setLabelsVisible(labelsVisible);
       document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
     });
 
@@ -350,6 +356,7 @@ const Controls = (() => {
       intel: Intel.getCount(),
       vessels: Vessels.getCount(),
       traffic: Traffic.getCount(),
+      conflicts: Conflicts.getCount(),
     };
 
     Object.entries(counts).forEach(([id, count]) => {

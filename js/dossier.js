@@ -455,6 +455,61 @@ const Dossier = (() => {
     Bases.clearCorrelation(Globe.getViewer());
   }
 
+  function showConflict(props) {
+    currentId = null;
+    const id = props.id?.getValue ? props.id.getValue() : props.id;
+    const name = props.name?.getValue ? props.name.getValue() : props.name;
+    const eventType = props.eventType?.getValue ? props.eventType.getValue() : props.eventType;
+    const date = props.date?.getValue ? props.date.getValue() : props.date;
+    const operation = props.operation?.getValue ? props.operation.getValue() : props.operation;
+    const parties = props.parties?.getValue ? props.parties.getValue() : props.parties;
+    const target = props.target?.getValue ? props.target.getValue() : props.target;
+    const casualties = props.casualties?.getValue ? props.casualties.getValue() : props.casualties;
+    const description = props.description?.getValue ? props.description.getValue() : props.description;
+    const eventSources = props.eventSources?.getValue ? props.eventSources.getValue() : props.eventSources;
+    const eventColor = props.eventColor?.getValue ? props.eventColor.getValue() : props.eventColor;
+    const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+    const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+
+    titleEl.textContent = name || 'Conflict Event';
+
+    const color = eventColor || '#ef4444';
+    const typeLabel = eventType ? eventType.replace(/_/g, ' ') : 'event';
+    const dateStr = date ? new Date(date).toISOString().replace('T', ' ').slice(0, 16) + ' UTC' : '—';
+
+    let html = `
+      <div class="dossier-type-tag" style="background:${color}22;color:${color}">
+        ${esc(typeLabel)}
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Date</div>
+        <div class="dossier-field-value">${dateStr}</div>
+      </div>
+
+      ${operation ? `<div class="dossier-field"><div class="dossier-field-label">Operation</div><div class="dossier-field-value">${esc(String(operation))}</div></div>` : ''}
+      ${parties ? `<div class="dossier-field"><div class="dossier-field-label">Parties</div><div class="dossier-field-value">${esc(String(parties))}</div></div>` : ''}
+      ${target ? `<div class="dossier-field"><div class="dossier-field-label">Target</div><div class="dossier-field-value">${esc(String(target))}</div></div>` : ''}
+      ${casualties ? `<div class="dossier-field"><div class="dossier-field-label">Casualties</div><div class="dossier-field-value">${esc(String(casualties))}</div></div>` : ''}
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Description</div>
+        <div class="dossier-field-value">${esc(String(description || ''))}</div>
+      </div>
+
+      <div class="dossier-field">
+        <div class="dossier-field-label">Coordinates</div>
+        <div class="dossier-field-value">${lat != null ? Number(lat).toFixed(4) : '—'}, ${lon != null ? Number(lon).toFixed(4) : '—'}</div>
+      </div>
+
+      ${eventSources ? `<div class="dossier-field"><div class="dossier-field-label">Sources</div><div class="dossier-field-value" style="font-size:0.85em;color:var(--text-secondary)">${esc(String(eventSources))}</div></div>` : ''}
+    `;
+
+    bodyEl.innerHTML = html;
+    panel.classList.add('open');
+    Bases.clearCorrelation(Globe.getViewer());
+  }
+
   function close() {
     panel.classList.remove('open');
     currentId = null;
@@ -482,5 +537,5 @@ const Dossier = (() => {
     return div.innerHTML;
   }
 
-  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, showVessel, close, isOpen };
+  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, showVessel, showConflict, close, isOpen };
 })();

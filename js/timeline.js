@@ -114,6 +114,9 @@ const Timeline = (() => {
     if (typeof Satellites !== 'undefined' && Satellites.setTime) {
       Satellites.setTime(epoch);
     }
+    if (typeof Conflicts !== 'undefined' && Conflicts.setTime) {
+      Conflicts.setTime(epoch);
+    }
     // Update top bar LIVE indicator
     updateTopBarLive(epoch === null);
   }

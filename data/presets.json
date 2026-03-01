@@ -70,5 +70,14 @@
     "altitude": 500000,
     "key": "N",
     "description": "Los Alamos, Sandia, White Sands, Dulce cluster"
+  },
+  {
+    "id": "iran-theater",
+    "name": "Iran Theater",
+    "lat": 32.5,
+    "lon": 53,
+    "altitude": 3000000,
+    "key": "I",
+    "description": "Iran/Persian Gulf conflict theater overview"
   }
 ]
