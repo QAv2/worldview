@@ -1,0 +1,10 @@
+{
+  "slug": "test-capture",
+  "title": "Test Capture",
+  "start_ms": 1772595696000,
+  "end_ms": 1772595796000,
+  "frame_count": 2,
+  "frame_interval_min": 1,
+  "correlation_passes": [],
+  "tfr_file": "airspace/tfr.json"
+}

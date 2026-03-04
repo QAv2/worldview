@@ -27,6 +27,10 @@
   --vessel-color: #3b82f6;
   --traffic-color: #10b981;
   --conflict-color: #ef4444;
+  --playback-color: #22d3ee;
+  --jamming-color: #f97316;
+  --airspace-color: #f43f5e;
+  --satcorr-color: #a855f7;
 
   --font-mono: 'SF Mono', 'Monaco', 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
   --font-sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
@@ -1091,6 +1095,40 @@ body.timeline-open #coords {
 .console-link:hover {
   background: var(--accent-dim);
   color: var(--text-primary);
+}
+
+/* ── Speed Controls (Timeline) ── */
+.speed-btn {
+  width: 20px !important;
+  height: 20px !important;
+  font-size: 8px !important;
+  padding: 0;
+}
+
+.timeline-speed-label {
+  font-size: 10px;
+  color: var(--accent);
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.5px;
+}
+
+/* ── Replay Panel ── */
+.replay-btn {
+  position: relative;
+}
+
+.replay-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--playback-color);
+  flex-shrink: 0;
+}
+
+.replay-btn:hover .replay-dot {
+  box-shadow: 0 0 6px var(--playback-color);
 }
 
 /* ── Responsive ── */

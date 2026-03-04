@@ -25,6 +25,8 @@ exports.handler = async (event) => {
   const allowed = [
     'celestrak.org',
     'api.adsb.lol',
+    'airframes.io',
+    'raw.githubusercontent.com',
   ];
 
   let parsed;

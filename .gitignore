@@ -3,3 +3,6 @@
 *.pem
 node_modules/
 .netlify/
+data/captures/
+__pycache__/
+*.pyc

@@ -14,6 +14,9 @@ const Controls = (() => {
     { id: 'vessels', name: 'Naval Vessels', color: 'var(--vessel-color)', key: 'F7', module: () => Vessels },
     { id: 'traffic', name: 'Traffic Flow', color: 'var(--traffic-color)', key: 'F8', module: () => Traffic },
     { id: 'conflicts', name: 'Conflict Events', color: 'var(--conflict-color)', key: 'F9', module: () => Conflicts },
+    { id: 'playback', name: 'Replay Data', color: 'var(--playback-color)', key: 'F10', module: () => Playback },
+    { id: 'jamming', name: 'GPS Jamming', color: 'var(--jamming-color)', key: 'F11', module: () => Jamming },
+    { id: 'airspace', name: 'Airspace / TFR', color: 'var(--airspace-color)', key: 'F12', module: () => Airspace },
   ];
 
   const MODES = [
@@ -36,6 +39,7 @@ const Controls = (() => {
     buildModeButtons();
     buildLayerToggles();
     buildPresetButtons();
+    buildReplayPanel();
     setupKeyboard();
     setupMouse();
     setupMiscToggles();
@@ -124,6 +128,58 @@ const Controls = (() => {
     });
   }
 
+  // ── Replay Panel ─────────────────────────────────────────────────────
+
+  function buildReplayPanel() {
+    const container = document.getElementById('replay-panel');
+    if (!container) return;
+
+    loadReplayIndex().then(replays => {
+      if (replays.length === 0) {
+        container.innerHTML = '<div style="font-size:11px;color:var(--text-tertiary);padding:4px 0">No captures available</div>';
+        return;
+      }
+      replays.forEach(r => {
+        const btn = document.createElement('button');
+        btn.className = 'preset-btn replay-btn';
+        btn.innerHTML = `
+          <span class="replay-dot"></span>
+          <span>${r.title}</span>
+          <span style="font-size:9px;color:var(--text-tertiary)">${r.frame_count} frames</span>
+        `;
+        btn.addEventListener('click', () => loadReplayFromPanel(r.slug));
+        container.appendChild(btn);
+      });
+    });
+  }
+
+  async function loadReplayIndex() {
+    try {
+      const resp = await fetch('data/replays/index.json');
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      return data.replays || [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function loadReplayFromPanel(slug) {
+    console.log(`[Controls] Loading replay: ${slug}`);
+    const manifest = await Playback.loadReplay(slug);
+    if (!manifest) return;
+
+    // Load associated data for other layers
+    if (typeof Airspace !== 'undefined' && manifest.tfr_file) {
+      Airspace.loadReplayTFR(slug);
+    }
+    if (typeof SatCorrelation !== 'undefined') {
+      SatCorrelation.loadCorrelations(manifest);
+    }
+  }
+
+  // ── Keyboard ─────────────────────────────────────────────────────────
+
   function setupKeyboard() {
     document.addEventListener('keydown', (e) => {
       // Don't capture if typing in an input
@@ -168,13 +224,35 @@ const Controls = (() => {
         return;
       }
 
+      // Speed controls: { = slower, } = faster
+      if (key === '{') {
+        if (typeof Timeline !== 'undefined') Timeline.speedDown();
+        return;
+      }
+      if (key === '}') {
+        if (typeof Timeline !== 'undefined') Timeline.speedUp();
+        return;
+      }
+
+      // Satellite correlation toggle
+      if (key.toLowerCase() === 'k' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        if (typeof SatCorrelation !== 'undefined') {
+          toggleLayer('sat-correlation');
+          // Direct toggle since it's not in the main LAYERS array
+          const mod = SatCorrelation;
+          const newState = !mod.isVisible();
+          mod.setVisible(newState);
+        }
+        return;
+      }
+
       // Camera presets
       const preset = presets.find(p => p.key.toLowerCase() === key.toLowerCase());
       if (preset && !e.ctrlKey && !e.metaKey && !e.altKey) {
         Globe.flyTo(preset.lon, preset.lat, preset.altitude);
       }
 
-      // Layer toggles (F1-F6)
+      // Layer toggles (F1-F12)
       if (key.startsWith('F') && !e.ctrlKey) {
         const fNum = parseInt(key.slice(1));
         if (fNum >= 1 && fNum <= LAYERS.length) {
@@ -195,6 +273,10 @@ const Controls = (() => {
         Vessels.setLabelsVisible(labelsVisible);
         Traffic.setLabelsVisible(labelsVisible);
         Conflicts.setLabelsVisible(labelsVisible);
+        if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
+        if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
+        if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
+        if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
         document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
       }
 
@@ -317,6 +399,10 @@ const Controls = (() => {
       Vessels.setLabelsVisible(labelsVisible);
       Traffic.setLabelsVisible(labelsVisible);
       Conflicts.setLabelsVisible(labelsVisible);
+      if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
+      if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
+      if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
+      if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
       document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
     });
 
@@ -357,6 +443,9 @@ const Controls = (() => {
       vessels: Vessels.getCount(),
       traffic: Traffic.getCount(),
       conflicts: Conflicts.getCount(),
+      playback: typeof Playback !== 'undefined' ? Playback.getCount() : 0,
+      jamming: typeof Jamming !== 'undefined' ? Jamming.getCount() : 0,
+      airspace: typeof Airspace !== 'undefined' ? Airspace.getCount() : 0,
     };
 
     Object.entries(counts).forEach(([id, count]) => {

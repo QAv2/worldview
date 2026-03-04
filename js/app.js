@@ -36,12 +36,19 @@ const App = (() => {
         Vessels.init(viewer),
         Traffic.init(viewer),
         Conflicts.init(viewer),
+        Playback.init(viewer),
+        Jamming.init(viewer),
+        Airspace.init(viewer),
+        SatCorrelation.init(viewer),
       ]);
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
       console.log(`[WorldView] Data layers loaded in ${elapsed}s`);
 
       // Log any failures
-      const layerNames = ['Bases', 'Intel', 'Earthquakes', 'Satellites', 'Aircraft', 'Military', 'Vessels', 'Traffic', 'Conflicts'];
+      const layerNames = [
+        'Bases', 'Intel', 'Earthquakes', 'Satellites', 'Aircraft', 'Military',
+        'Vessels', 'Traffic', 'Conflicts', 'Playback', 'Jamming', 'Airspace', 'SatCorrelation',
+      ];
       results.forEach((r, i) => {
         if (r.status === 'rejected') {
           console.warn(`[WorldView] ${layerNames[i]} failed:`, r.reason);

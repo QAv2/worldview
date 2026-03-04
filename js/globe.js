@@ -266,9 +266,18 @@ const Globe = (() => {
     };
   }
 
+  function getCameraCenter() {
+    if (!viewer) return null;
+    const carto = viewer.camera.positionCartographic;
+    return {
+      lat: Cesium.Math.toDegrees(carto.latitude),
+      lon: Cesium.Math.toDegrees(carto.longitude),
+    };
+  }
+
   function requestRender() {
     if (viewer) viewer.scene.requestRender();
   }
 
-  return { init, flyTo, getViewer, getMouseCoords, getCameraState, setBaseLayer, getBaseLayerId, getBaseLayerList, requestRender };
+  return { init, flyTo, getViewer, getMouseCoords, getCameraState, getCameraCenter, setBaseLayer, getBaseLayerId, getBaseLayerList, requestRender };
 })();

@@ -1,5 +1,5 @@
 // hashstate.js — Shareable URL state via hash fragment
-// Format: #lat,lon,alt,heading,pitch,roll/layers/base[/mode]
+// Format: #lat,lon,alt,heading,pitch,roll/layers/base[/mode][/replay:slug]
 
 const HashState = (() => {
   let debounceTimer = null;
@@ -18,14 +18,27 @@ const HashState = (() => {
       cam.roll.toFixed(1),
     ].join(',');
 
-    const modules = [Earthquakes, Satellites, Aircraft, Bases, Military, Intel, Vessels, Traffic];
-    const layers = modules.map(m => m.isVisible() ? '1' : '0').join('');
+    // 12-bit layer mask: F1-F9 + Playback + Jamming + Airspace
+    const modules = [
+      Earthquakes, Satellites, Aircraft, Bases, Military, Intel, Vessels, Traffic, Conflicts,
+      typeof Playback !== 'undefined' ? Playback : null,
+      typeof Jamming !== 'undefined' ? Jamming : null,
+      typeof Airspace !== 'undefined' ? Airspace : null,
+    ];
+    const layers = modules.map(m => (m && m.isVisible()) ? '1' : '0').join('');
 
     const base = Globe.getBaseLayerId();
     const mode = Shaders.getMode();
 
     let hash = `${camStr}/${layers}/${base}`;
     if (mode !== 'normal') hash += `/${mode}`;
+
+    // Add replay slug if active
+    if (typeof Playback !== 'undefined' && Playback.isReplayActive()) {
+      const replay = Playback.getReplay();
+      if (replay) hash += `/replay:${replay.slug}`;
+    }
+
     return hash;
   }
 
@@ -50,12 +63,22 @@ const HashState = (() => {
       },
     };
 
-    if (parts[1] && /^[01]{8}$/.test(parts[1])) {
+    // Accept 8-12 bit layer masks (backward compatible)
+    if (parts[1] && /^[01]{8,12}$/.test(parts[1])) {
       state.layers = parts[1];
     }
 
     if (parts[2]) state.base = parts[2];
-    if (parts[3]) state.mode = parts[3];
+
+    // Parse remaining parts (mode, replay)
+    for (let i = 3; i < parts.length; i++) {
+      const p = parts[i];
+      if (p.startsWith('replay:')) {
+        state.replay = p.slice(7);
+      } else if (['normal', 'crt', 'nvg', 'flir'].includes(p)) {
+        state.mode = p;
+      }
+    }
 
     return state;
   }
@@ -94,18 +117,37 @@ const HashState = (() => {
         btn.classList.toggle('active', modes[i] === state.mode);
       });
     }
+
+    // Load replay if specified in hash
+    if (state.replay && typeof Playback !== 'undefined') {
+      Playback.loadReplay(state.replay);
+    }
   }
 
   function applyLayers(state) {
     if (!state || !state.layers) return;
-    const modules = [Earthquakes, Satellites, Aircraft, Bases, Military, Intel, Vessels, Traffic];
-    const layerIds = ['earthquakes', 'satellites', 'aircraft', 'bases', 'military', 'intel', 'vessels', 'traffic'];
 
-    for (let i = 0; i < 8; i++) {
+    // All modules in order — matches serialize() order
+    const modules = [
+      Earthquakes, Satellites, Aircraft, Bases, Military, Intel, Vessels, Traffic, Conflicts,
+      typeof Playback !== 'undefined' ? Playback : null,
+      typeof Jamming !== 'undefined' ? Jamming : null,
+      typeof Airspace !== 'undefined' ? Airspace : null,
+    ];
+    const layerIds = [
+      'earthquakes', 'satellites', 'aircraft', 'bases', 'military', 'intel', 'vessels', 'traffic', 'conflicts',
+      'playback', 'jamming', 'airspace',
+    ];
+
+    // Apply as many bits as the hash provides (Math.min for old 8-bit URLs)
+    const bitCount = Math.min(state.layers.length, modules.length);
+    for (let i = 0; i < bitCount; i++) {
+      const mod = modules[i];
+      if (!mod) continue;
       const shouldBeVisible = state.layers[i] === '1';
-      const isVisible = modules[i].isVisible();
-      if (shouldBeVisible !== isVisible) {
-        modules[i].setVisible(shouldBeVisible);
+      const isVis = mod.isVisible();
+      if (shouldBeVisible !== isVis) {
+        mod.setVisible(shouldBeVisible);
         const el = document.getElementById(`toggle-${layerIds[i]}`);
         if (el) el.classList.toggle('off', !shouldBeVisible);
       }

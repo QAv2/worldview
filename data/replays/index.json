@@ -1,0 +1,11 @@
+{
+  "replays": [
+    {
+      "slug": "test-capture",
+      "title": "Test Capture",
+      "start_ms": 1772595696000,
+      "end_ms": 1772595796000,
+      "frame_count": 2
+    }
+  ]
+}

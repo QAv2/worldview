@@ -1,0 +1,4 @@
+aiohttp>=3.9
+aiosqlite>=0.19
+Pillow>=10.0
+sgp4>=2.22
