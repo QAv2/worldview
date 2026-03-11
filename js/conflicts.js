@@ -1,4 +1,4 @@
-// conflicts.js — F9 conflict events layer (Iran theater Feb-Mar 2026)
+// conflicts.js — F9 conflict events layer (Middle East theater 2025-2026)
 
 const Conflicts = (() => {
   let entities = [];
@@ -14,6 +14,9 @@ const Conflicts = (() => {
     blockade: '#f59e0b',
     cyber: '#06b6d4',
     nuclear: '#a855f7',
+    ground: '#22c55e',
+    political: '#8b5cf6',
+    economic: '#14b8a6',
   };
 
   async function init(viewer) {
@@ -116,6 +119,18 @@ const Conflicts = (() => {
       case 'cyber':
         // Lightning bolt
         drawLightning(ctx, cx, cy, 10, color);
+        break;
+      case 'ground':
+        // Tank / chevron arrow
+        drawChevron(ctx, cx, cy, 9, color);
+        break;
+      case 'political':
+        // Gavel / circle with star
+        drawPolitical(ctx, cx, cy, 9, color);
+        break;
+      case 'economic':
+        // Dollar / chart symbol
+        drawEconomic(ctx, cx, cy, 9, color);
         break;
       default:
         drawBurst(ctx, cx, cy, 10, 5, 8, color);
@@ -228,6 +243,72 @@ const Conflicts = (() => {
     ctx.lineTo(cx, cy);
     ctx.closePath();
     ctx.fill();
+    ctx.stroke();
+  }
+
+  function drawChevron(ctx, cx, cy, r, color) {
+    ctx.fillStyle = color + '55';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    // Upward-pointing chevron (ground advance)
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx + r, cy + r * 0.3);
+    ctx.lineTo(cx + r * 0.5, cy + r * 0.3);
+    ctx.lineTo(cx + r * 0.5, cy + r);
+    ctx.lineTo(cx - r * 0.5, cy + r);
+    ctx.lineTo(cx - r * 0.5, cy + r * 0.3);
+    ctx.lineTo(cx - r, cy + r * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+  }
+
+  function drawPolitical(ctx, cx, cy, r, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = color + '44';
+    // Circle with inner star
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    // 5-pointed star
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    for (let i = 0; i < 10; i++) {
+      const angle = (i * Math.PI) / 5 - Math.PI / 2;
+      const sr = i % 2 === 0 ? r * 0.55 : r * 0.22;
+      const x = cx + sr * Math.cos(angle);
+      const y = cy + sr * Math.sin(angle);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  function drawEconomic(ctx, cx, cy, r, color) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.fillStyle = color + '44';
+    // Diamond shape
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - r);
+    ctx.lineTo(cx + r, cy);
+    ctx.lineTo(cx, cy + r);
+    ctx.lineTo(cx - r, cy);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // Up-arrow inside (price spike)
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + r * 0.4);
+    ctx.lineTo(cx, cy - r * 0.4);
+    ctx.moveTo(cx - r * 0.25, cy - r * 0.15);
+    ctx.lineTo(cx, cy - r * 0.4);
+    ctx.lineTo(cx + r * 0.25, cy - r * 0.15);
     ctx.stroke();
   }
 
