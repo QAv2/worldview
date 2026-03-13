@@ -18,12 +18,13 @@ const HashState = (() => {
       cam.roll.toFixed(1),
     ].join(',');
 
-    // 12-bit layer mask: F1-F9 + Playback + Jamming + Airspace
+    // 13-bit layer mask: F1-F9 + Playback + Jamming + Airspace + Antarctica
     const modules = [
       Earthquakes, Satellites, Aircraft, Bases, Military, Intel, Vessels, Traffic, Conflicts,
       typeof Playback !== 'undefined' ? Playback : null,
       typeof Jamming !== 'undefined' ? Jamming : null,
       typeof Airspace !== 'undefined' ? Airspace : null,
+      typeof Antarctica !== 'undefined' ? Antarctica : null,
     ];
     const layers = modules.map(m => (m && m.isVisible()) ? '1' : '0').join('');
 
@@ -63,8 +64,8 @@ const HashState = (() => {
       },
     };
 
-    // Accept 8-12 bit layer masks (backward compatible)
-    if (parts[1] && /^[01]{8,12}$/.test(parts[1])) {
+    // Accept 8-13 bit layer masks (backward compatible)
+    if (parts[1] && /^[01]{8,13}$/.test(parts[1])) {
       state.layers = parts[1];
     }
 
@@ -133,10 +134,11 @@ const HashState = (() => {
       typeof Playback !== 'undefined' ? Playback : null,
       typeof Jamming !== 'undefined' ? Jamming : null,
       typeof Airspace !== 'undefined' ? Airspace : null,
+      typeof Antarctica !== 'undefined' ? Antarctica : null,
     ];
     const layerIds = [
       'earthquakes', 'satellites', 'aircraft', 'bases', 'military', 'intel', 'vessels', 'traffic', 'conflicts',
-      'playback', 'jamming', 'airspace',
+      'playback', 'jamming', 'airspace', 'antarctica',
     ];
 
     // Apply as many bits as the hash provides (Math.min for old 8-bit URLs)

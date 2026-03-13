@@ -17,6 +17,7 @@ const Controls = (() => {
     { id: 'playback', name: 'Replay Data', color: 'var(--playback-color)', key: 'F10', module: () => Playback },
     { id: 'jamming', name: 'GPS Jamming', color: 'var(--jamming-color)', key: 'F11', module: () => Jamming },
     { id: 'airspace', name: 'Airspace / TFR', color: 'var(--airspace-color)', key: 'F12', module: () => Airspace },
+    { id: 'antarctica', name: 'Antarctica', color: 'var(--antarctica-color)', key: 'A', module: () => Antarctica },
   ];
 
   const MODES = [
@@ -234,6 +235,12 @@ const Controls = (() => {
         return;
       }
 
+      // Antarctica layer toggle
+      if (key.toLowerCase() === 'a' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        toggleLayer('antarctica');
+        return;
+      }
+
       // Satellite correlation toggle
       if (key.toLowerCase() === 'k' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (typeof SatCorrelation !== 'undefined') {
@@ -276,6 +283,7 @@ const Controls = (() => {
         if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
         if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
         if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
+        if (typeof Antarctica !== 'undefined') Antarctica.setLabelsVisible(labelsVisible);
         if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
         document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
       }
@@ -370,6 +378,9 @@ const Controls = (() => {
         case 'conflict':
           Dossier.showConflict(props);
           break;
+        case 'antarctica':
+          Dossier.showAntarctica(props);
+          break;
       }
     }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
@@ -402,6 +413,7 @@ const Controls = (() => {
       if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
       if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
       if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
+      if (typeof Antarctica !== 'undefined') Antarctica.setLabelsVisible(labelsVisible);
       if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
       document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
     });
@@ -446,6 +458,7 @@ const Controls = (() => {
       playback: typeof Playback !== 'undefined' ? Playback.getCount() : 0,
       jamming: typeof Jamming !== 'undefined' ? Jamming.getCount() : 0,
       airspace: typeof Airspace !== 'undefined' ? Airspace.getCount() : 0,
+      antarctica: typeof Antarctica !== 'undefined' ? Antarctica.getCount() : 0,
     };
 
     Object.entries(counts).forEach(([id, count]) => {

@@ -79,5 +79,14 @@
     "altitude": 3000000,
     "key": "I",
     "description": "Iran/Persian Gulf conflict theater overview"
+  },
+  {
+    "id": "antarctica",
+    "name": "Antarctica",
+    "lat": -82,
+    "lon": 0,
+    "altitude": 8000000,
+    "key": "P",
+    "description": "Antarctic continent — research stations, treaty zones, disclosure sites"
   }
 ]

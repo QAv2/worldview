@@ -510,6 +510,183 @@ const Dossier = (() => {
     Bases.clearCorrelation(Globe.getViewer());
   }
 
+  function showAntarctica(props) {
+    currentId = null;
+    const subType = props.subType?.getValue ? props.subType.getValue() : props.subType;
+    const name = props.name?.getValue ? props.name.getValue() : props.name;
+
+    titleEl.textContent = name || 'Antarctica';
+
+    let html = '';
+    const antColor = '#38bdf8';
+
+    switch (subType) {
+      case 'station': {
+        const country = props.country?.getValue ? props.country.getValue() : props.country;
+        const year = props.year?.getValue ? props.year.getValue() : props.year;
+        const seasonality = props.seasonality?.getValue ? props.seasonality.getValue() : props.seasonality;
+        const status = props.stationStatus?.getValue ? props.stationStatus.getValue() : props.stationStatus;
+        const stnType = props.stationType?.getValue ? props.stationType.getValue() : props.stationType;
+        const pop = props.peakPop?.getValue ? props.peakPop.getValue() : props.peakPop;
+        const elev = props.elevation?.getValue ? props.elevation.getValue() : props.elevation;
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+        const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+        const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+
+        html = `
+          <div class="dossier-type-tag" style="background:${antColor}22;color:${antColor}">research station</div>
+          <div class="dossier-field"><div class="dossier-field-label">Country</div><div class="dossier-field-value">${esc(String(country || ''))}</div></div>
+          ${year ? `<div class="dossier-field"><div class="dossier-field-label">Established</div><div class="dossier-field-value">${year}</div></div>` : ''}
+          <div class="dossier-field"><div class="dossier-field-label">Seasonality</div><div class="dossier-field-value">${esc(String(seasonality || ''))}</div></div>
+          <div class="dossier-field"><div class="dossier-field-label">Status</div><div class="dossier-field-value">${esc(String(status || ''))}</div></div>
+          ${stnType ? `<div class="dossier-field"><div class="dossier-field-label">Type</div><div class="dossier-field-value">${esc(String(stnType))}</div></div>` : ''}
+          ${pop ? `<div class="dossier-field"><div class="dossier-field-label">Peak Population</div><div class="dossier-field-value">${pop}</div></div>` : ''}
+          ${elev != null ? `<div class="dossier-field"><div class="dossier-field-label">Elevation</div><div class="dossier-field-value">${elev}m</div></div>` : ''}
+          <div class="dossier-field"><div class="dossier-field-label">Coordinates</div><div class="dossier-field-value">${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}</div></div>
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Notes</div><div class="dossier-field-value">${esc(String(notes))}</div></div>` : ''}
+        `;
+        break;
+      }
+
+      case 'claim': {
+        const country = props.country?.getValue ? props.country.getValue() : props.country;
+        const yearClaimed = props.yearClaimed?.getValue ? props.yearClaimed.getValue() : props.yearClaimed;
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+
+        html = `
+          <div class="dossier-type-tag" style="background:#a78bfa22;color:#a78bfa">territorial claim</div>
+          <div class="dossier-field"><div class="dossier-field-label">Claimant</div><div class="dossier-field-value">${esc(String(country || ''))}</div></div>
+          ${yearClaimed ? `<div class="dossier-field"><div class="dossier-field-label">Year Claimed</div><div class="dossier-field-value">${yearClaimed}</div></div>` : ''}
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Notes</div><div class="dossier-field-value">${esc(String(notes))}</div></div>` : ''}
+        `;
+        break;
+      }
+
+      case 'historic': {
+        const year = props.year?.getValue ? props.year.getValue() : props.year;
+        const expedition = props.expedition?.getValue ? props.expedition.getValue() : props.expedition;
+        const explorer = props.explorer?.getValue ? props.explorer.getValue() : props.explorer;
+        const hsm = props.hsm?.getValue ? props.hsm.getValue() : props.hsm;
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+        const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+        const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+
+        html = `
+          <div class="dossier-type-tag" style="background:#d9770622;color:#d97706">historic site</div>
+          ${explorer ? `<div class="dossier-field"><div class="dossier-field-label">Explorer</div><div class="dossier-field-value">${esc(String(explorer))}</div></div>` : ''}
+          ${expedition ? `<div class="dossier-field"><div class="dossier-field-label">Expedition</div><div class="dossier-field-value">${esc(String(expedition))}</div></div>` : ''}
+          ${year ? `<div class="dossier-field"><div class="dossier-field-label">Year</div><div class="dossier-field-value">${year}</div></div>` : ''}
+          ${hsm ? `<div class="dossier-field"><div class="dossier-field-label">HSM Number</div><div class="dossier-field-value">${hsm}</div></div>` : ''}
+          <div class="dossier-field"><div class="dossier-field-label">Coordinates</div><div class="dossier-field-value">${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}</div></div>
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Notes</div><div class="dossier-field-value">${esc(String(notes))}</div></div>` : ''}
+        `;
+        break;
+      }
+
+      case 'military': {
+        const opName = props.operationName?.getValue ? props.operationName.getValue() : props.operationName;
+        const dates = props.dates?.getValue ? props.dates.getValue() : props.dates;
+        const commander = props.commander?.getValue ? props.commander.getValue() : props.commander;
+        const personnel = props.personnel?.getValue ? props.personnel.getValue() : props.personnel;
+        const ships = props.ships?.getValue ? props.ships.getValue() : props.ships;
+        const aircraft = props.aircraft?.getValue ? props.aircraft.getValue() : props.aircraft;
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+        const earlyTerm = props.earlyTermination?.getValue ? props.earlyTermination.getValue() : props.earlyTermination;
+        const earlyTermReason = props.earlyTerminationReason?.getValue ? props.earlyTerminationReason.getValue() : props.earlyTerminationReason;
+        const byrdQuote = props.byrdQuote?.getValue ? props.byrdQuote.getValue() : props.byrdQuote;
+        const quoteCaveat = props.quoteCaveat?.getValue ? props.quoteCaveat.getValue() : props.quoteCaveat;
+        const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+        const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+
+        html = `
+          <div class="dossier-type-tag" style="background:#ef444422;color:#ef4444">military operation</div>
+          <div class="dossier-field"><div class="dossier-field-label">Operation</div><div class="dossier-field-value">${esc(String(opName || ''))}</div></div>
+          ${dates ? `<div class="dossier-field"><div class="dossier-field-label">Dates</div><div class="dossier-field-value">${esc(String(dates))}</div></div>` : ''}
+          ${commander ? `<div class="dossier-field"><div class="dossier-field-label">Commander</div><div class="dossier-field-value">${esc(String(commander))}</div></div>` : ''}
+          ${personnel ? `<div class="dossier-field"><div class="dossier-field-label">Personnel</div><div class="dossier-field-value">${personnel}</div></div>` : ''}
+          ${ships ? `<div class="dossier-field"><div class="dossier-field-label">Ships</div><div class="dossier-field-value">${ships}</div></div>` : ''}
+          ${aircraft ? `<div class="dossier-field"><div class="dossier-field-label">Aircraft</div><div class="dossier-field-value">${aircraft}</div></div>` : ''}
+          <div class="dossier-field"><div class="dossier-field-label">Coordinates</div><div class="dossier-field-value">${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}</div></div>
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Location Notes</div><div class="dossier-field-value">${esc(String(notes))}</div></div>` : ''}
+          ${earlyTerm ? `<div class="dossier-field"><div class="dossier-field-label">Early Termination</div><div class="dossier-field-value" style="color:#f87171">${esc(String(earlyTerm))}</div></div>` : ''}
+          ${earlyTermReason ? `<div class="dossier-field"><div class="dossier-field-label">Reason</div><div class="dossier-field-value" style="color:#f87171">${esc(String(earlyTermReason))}</div></div>` : ''}
+          ${byrdQuote ? `
+            <div class="dossier-field">
+              <div class="dossier-field-label">Byrd Quote (El Mercurio, 1947)</div>
+              <div class="dossier-field-value" style="font-style:italic;color:var(--text-secondary)">"${esc(String(byrdQuote))}"</div>
+            </div>
+            ${quoteCaveat ? `<div class="dossier-field"><div class="dossier-field-label">Caveat</div><div class="dossier-field-value" style="font-size:0.85em;color:var(--text-tertiary)">${esc(String(quoteCaveat))}</div></div>` : ''}
+          ` : ''}
+        `;
+        break;
+      }
+
+      case 'disclosure':
+      case 'visit': {
+        const desc = props.description?.getValue ? props.description.getValue() : props.description;
+        const findings = props.findings?.getValue ? props.findings.getValue() : props.findings;
+        const when = props.when?.getValue ? props.when.getValue() : props.when;
+        const location = props.location?.getValue ? props.location.getValue() : props.location;
+        const officialReason = props.officialReason?.getValue ? props.officialReason.getValue() : props.officialReason;
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+        const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+        const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+
+        const tagColor = subType === 'visit' ? '#a78bfa' : '#c084fc';
+        const tagLabel = subType === 'visit' ? 'high-profile visit' : 'anomaly / disclosure';
+
+        html = `
+          <div class="dossier-type-tag" style="background:${tagColor}22;color:${tagColor}">${tagLabel}</div>
+          ${when ? `<div class="dossier-field"><div class="dossier-field-label">When</div><div class="dossier-field-value">${esc(String(when))}</div></div>` : ''}
+          ${location ? `<div class="dossier-field"><div class="dossier-field-label">Location</div><div class="dossier-field-value">${esc(String(location))}</div></div>` : ''}
+          ${officialReason ? `<div class="dossier-field"><div class="dossier-field-label">Official Reason</div><div class="dossier-field-value">${esc(String(officialReason))}</div></div>` : ''}
+          ${desc ? `<div class="dossier-field"><div class="dossier-field-label">Description</div><div class="dossier-field-value">${esc(String(desc))}</div></div>` : ''}
+          ${findings ? `<div class="dossier-field"><div class="dossier-field-label">Findings / Evidence</div><div class="dossier-field-value" style="font-size:0.9em">${esc(String(findings))}</div></div>` : ''}
+          ${lat != null ? `<div class="dossier-field"><div class="dossier-field-label">Coordinates</div><div class="dossier-field-value">${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}</div></div>` : ''}
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Notes</div><div class="dossier-field-value" style="color:var(--text-secondary)">${esc(String(notes))}</div></div>` : ''}
+        `;
+        break;
+      }
+
+      case 'aspa':
+      case 'asma': {
+        const number = props.number?.getValue ? props.number.getValue() : props.number;
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+        const paType = subType === 'aspa' ? 'Specially Protected Area' : 'Specially Managed Area';
+
+        html = `
+          <div class="dossier-type-tag" style="background:#34d39922;color:#34d399">${paType.toLowerCase()}</div>
+          ${number ? `<div class="dossier-field"><div class="dossier-field-label">${subType.toUpperCase()} Number</div><div class="dossier-field-value">${number}</div></div>` : ''}
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Description</div><div class="dossier-field-value">${esc(String(notes))}</div></div>` : ''}
+        `;
+        break;
+      }
+
+      case 'geographic': {
+        const notes = props.notes?.getValue ? props.notes.getValue() : props.notes;
+        const elev = props.elevation?.getValue ? props.elevation.getValue() : props.elevation;
+        const lat = props.lat?.getValue ? props.lat.getValue() : props.lat;
+        const lon = props.lon?.getValue ? props.lon.getValue() : props.lon;
+
+        html = `
+          <div class="dossier-type-tag" style="background:#e2e8f022;color:#e2e8f0">geographic feature</div>
+          ${elev != null ? `<div class="dossier-field"><div class="dossier-field-label">Elevation</div><div class="dossier-field-value">${elev}m</div></div>` : ''}
+          ${lat != null ? `<div class="dossier-field"><div class="dossier-field-label">Coordinates</div><div class="dossier-field-value">${Number(lat).toFixed(4)}, ${Number(lon).toFixed(4)}</div></div>` : ''}
+          ${notes ? `<div class="dossier-field"><div class="dossier-field-label">Notes</div><div class="dossier-field-value">${esc(String(notes))}</div></div>` : ''}
+        `;
+        break;
+      }
+
+      default: {
+        html = `<div class="dossier-type-tag" style="background:${antColor}22;color:${antColor}">antarctica</div>`;
+      }
+    }
+
+    bodyEl.innerHTML = html;
+    panel.classList.add('open');
+    Bases.clearCorrelation(Globe.getViewer());
+  }
+
   function close() {
     panel.classList.remove('open');
     currentId = null;
@@ -537,5 +714,5 @@ const Dossier = (() => {
     return div.innerHTML;
   }
 
-  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, showVessel, showConflict, close, isOpen };
+  return { init, showBase, showMilitary, showIntel, showEarthquake, showAircraft, showSatellite, showVessel, showConflict, showAntarctica, close, isOpen };
 })();

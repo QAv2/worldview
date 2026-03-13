@@ -39,6 +39,7 @@ const App = (() => {
         Playback.init(viewer),
         Jamming.init(viewer),
         Airspace.init(viewer),
+        Antarctica.init(viewer),
         SatCorrelation.init(viewer),
       ]);
       const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
@@ -47,7 +48,7 @@ const App = (() => {
       // Log any failures
       const layerNames = [
         'Bases', 'Intel', 'Earthquakes', 'Satellites', 'Aircraft', 'Military',
-        'Vessels', 'Traffic', 'Conflicts', 'Playback', 'Jamming', 'Airspace', 'SatCorrelation',
+        'Vessels', 'Traffic', 'Conflicts', 'Playback', 'Jamming', 'Airspace', 'Antarctica', 'SatCorrelation',
       ];
       results.forEach((r, i) => {
         if (r.status === 'rejected') {
