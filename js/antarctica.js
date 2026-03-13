@@ -305,10 +305,51 @@ const Antarctica = (() => {
 
     allData.territorial_claims.forEach(claim => {
       const color = getClaimColor(claim.country);
+
+      // Point claims (e.g. Peter I Island) — render as marker, not wedge
+      if (claim.lat != null && claim.lon != null && claim.lon_west == null) {
+        const entity = dataSource.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(claim.lon, claim.lat),
+          point: {
+            pixelSize: 8,
+            color: Cesium.Color.fromCssColorString(color).withAlpha(0.6),
+            outlineColor: Cesium.Color.fromCssColorString(color),
+            outlineWidth: 1,
+            disableDepthTestDistance: 0,
+          },
+          label: {
+            text: claim.name,
+            font: '9px monospace',
+            fillColor: Cesium.Color.fromCssColorString(color).withAlpha(0.7),
+            outlineColor: Cesium.Color.BLACK,
+            outlineWidth: 2,
+            style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+            verticalOrigin: Cesium.VerticalOrigin.TOP,
+            pixelOffset: new Cesium.Cartesian2(0, 10),
+            disableDepthTestDistance: 0,
+            scaleByDistance: new Cesium.NearFarScalar(1e4, 1, 3e6, 0.4),
+            show: true,
+          },
+          properties: {
+            type: 'antarctica',
+            subType: 'claim',
+            name: claim.name,
+            country: claim.country,
+            yearClaimed: claim.year_claimed,
+            notes: claim.notes,
+          },
+        });
+        entities.push(entity);
+        return;
+      }
+
+      // Sector claims — render as wedge polygon
+      if (claim.lon_west == null || claim.lon_east == null) return;
+
       const positions = [];
 
-      // South pole start
-      positions.push(Cesium.Cartesian3.fromDegrees(claim.lon_west, -89.99));
+      // Use -88 for pole vertex (CesiumJS outline geometry breaks near exact pole)
+      positions.push(Cesium.Cartesian3.fromDegrees(claim.lon_west, -88));
 
       // Arc along 60deg S boundary
       let lonStart = claim.lon_west;
@@ -323,7 +364,7 @@ const Antarctica = (() => {
       positions.push(Cesium.Cartesian3.fromDegrees(claim.lon_east, -60));
 
       // Back to pole
-      positions.push(Cesium.Cartesian3.fromDegrees(claim.lon_east, -89.99));
+      positions.push(Cesium.Cartesian3.fromDegrees(claim.lon_east, -88));
 
       const entity = dataSource.entities.add({
         polygon: {
