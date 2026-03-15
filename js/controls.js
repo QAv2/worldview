@@ -4,6 +4,32 @@ const Controls = (() => {
   let presets = [];
   let labelsVisible = true;
 
+  function toggleAllLabels() {
+    labelsVisible = !labelsVisible;
+    Earthquakes.setLabelsVisible(labelsVisible);
+    Satellites.setLabelsVisible(labelsVisible);
+    Aircraft.setLabelsVisible(labelsVisible);
+    Bases.setLabelsVisible(labelsVisible);
+    Military.setLabelsVisible(labelsVisible);
+    Intel.setLabelsVisible(labelsVisible);
+    Vessels.setLabelsVisible(labelsVisible);
+    Traffic.setLabelsVisible(labelsVisible);
+    Conflicts.setLabelsVisible(labelsVisible);
+    if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
+    if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
+    if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
+    if (typeof Antarctica !== 'undefined') Antarctica.setLabelsVisible(labelsVisible);
+    if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
+    document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
+  }
+
+  function toggleCrosshair() {
+    const ch = document.getElementById('crosshair');
+    const isVisible = ch.style.display !== 'none';
+    ch.style.display = isVisible ? 'none' : 'block';
+    document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
+  }
+
   const LAYERS = [
     { id: 'earthquakes', name: 'Earthquakes', color: 'var(--quake-shallow)', key: 'F1', module: () => Earthquakes },
     { id: 'satellites', name: 'Satellites', color: 'var(--sat-color)', key: 'F2', module: () => Satellites },
@@ -244,8 +270,6 @@ const Controls = (() => {
       // Satellite correlation toggle
       if (key.toLowerCase() === 'k' && !e.ctrlKey && !e.metaKey && !e.altKey) {
         if (typeof SatCorrelation !== 'undefined') {
-          toggleLayer('sat-correlation');
-          // Direct toggle since it's not in the main LAYERS array
           const mod = SatCorrelation;
           const newState = !mod.isVisible();
           mod.setVisible(newState);
@@ -270,30 +294,12 @@ const Controls = (() => {
 
       // Labels toggle
       if (key.toLowerCase() === 'l') {
-        labelsVisible = !labelsVisible;
-        Earthquakes.setLabelsVisible(labelsVisible);
-        Satellites.setLabelsVisible(labelsVisible);
-        Aircraft.setLabelsVisible(labelsVisible);
-        Bases.setLabelsVisible(labelsVisible);
-        Military.setLabelsVisible(labelsVisible);
-        Intel.setLabelsVisible(labelsVisible);
-        Vessels.setLabelsVisible(labelsVisible);
-        Traffic.setLabelsVisible(labelsVisible);
-        Conflicts.setLabelsVisible(labelsVisible);
-        if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
-        if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
-        if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
-        if (typeof Antarctica !== 'undefined') Antarctica.setLabelsVisible(labelsVisible);
-        if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
-        document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
+        toggleAllLabels();
       }
 
       // Crosshair toggle
       if (key.toLowerCase() === 'x') {
-        const ch = document.getElementById('crosshair');
-        const isVisible = ch.style.display !== 'none';
-        ch.style.display = isVisible ? 'none' : 'block';
-        document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
+        toggleCrosshair();
       }
 
       // Panel toggle
@@ -400,29 +406,11 @@ const Controls = (() => {
     });
 
     document.getElementById('labels-toggle').addEventListener('click', () => {
-      labelsVisible = !labelsVisible;
-      Earthquakes.setLabelsVisible(labelsVisible);
-      Satellites.setLabelsVisible(labelsVisible);
-      Aircraft.setLabelsVisible(labelsVisible);
-      Bases.setLabelsVisible(labelsVisible);
-      Military.setLabelsVisible(labelsVisible);
-      Intel.setLabelsVisible(labelsVisible);
-      Vessels.setLabelsVisible(labelsVisible);
-      Traffic.setLabelsVisible(labelsVisible);
-      Conflicts.setLabelsVisible(labelsVisible);
-      if (typeof Playback !== 'undefined') Playback.setLabelsVisible(labelsVisible);
-      if (typeof Jamming !== 'undefined') Jamming.setLabelsVisible(labelsVisible);
-      if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
-      if (typeof Antarctica !== 'undefined') Antarctica.setLabelsVisible(labelsVisible);
-      if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
-      document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
+      toggleAllLabels();
     });
 
     document.getElementById('crosshair-toggle').addEventListener('click', () => {
-      const ch = document.getElementById('crosshair');
-      const isVisible = ch.style.display !== 'none';
-      ch.style.display = isVisible ? 'none' : 'block';
-      document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
+      toggleCrosshair();
     });
 
   }

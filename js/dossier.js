@@ -302,7 +302,7 @@ const Dossier = (() => {
     const date = new Date(time);
 
     let html = `
-      <div class="dossier-type-tag" style="background:var(--quake-shallow)22;color:var(--quake-shallow)">
+      <div class="dossier-type-tag" style="background:#fbbf2422;color:var(--quake-shallow)">
         earthquake
       </div>
 
@@ -391,7 +391,7 @@ const Dossier = (() => {
     titleEl.textContent = name || 'Satellite';
 
     let html = `
-      <div class="dossier-type-tag" style="background:var(--sat-color)22;color:var(--sat-color)">
+      <div class="dossier-type-tag" style="background:#60a5fa22;color:var(--sat-color)">
         satellite
       </div>
 

@@ -81,15 +81,9 @@ const Aircraft = (() => {
   }
 
   async function fetchWithProxy(url) {
-    try {
-      const resp = await fetch(url);
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      return await resp.json();
-    } catch {
-      const resp = await fetch(`/.netlify/functions/proxy?url=${encodeURIComponent(url)}`);
-      if (!resp.ok) throw new Error(`Proxy HTTP ${resp.status}`);
-      return await resp.json();
-    }
+    const resp = await fetch(url);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    return await resp.json();
   }
 
   // Delta reconciliation — update in place, add new, remove departed

@@ -8,11 +8,8 @@ Usage:
 
 import argparse
 import json
-import math
 import os
 import sqlite3
-import struct
-import time
 from datetime import datetime, timezone
 
 try:
@@ -21,12 +18,6 @@ except ImportError:
     Image = None
     print("[preprocess] WARNING: Pillow not installed — jamming PNGs will be skipped")
 
-try:
-    from sgp4.api import Satrec, jday
-    from sgp4.earth_gravity import wgs72
-except ImportError:
-    Satrec = None
-    print("[preprocess] WARNING: sgp4 not installed — satellite correlation will be skipped")
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
