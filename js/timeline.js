@@ -115,6 +115,7 @@ const Timeline = (() => {
     }
     playing = true;
     playBtn.textContent = '\u23F8'; // pause icon
+    playBtn.setAttribute('aria-label', 'Pause timeline');
     playInterval = setInterval(() => {
       currentEpoch += getPlayStep();
 
@@ -140,6 +141,7 @@ const Timeline = (() => {
   function stopPlay() {
     playing = false;
     playBtn.textContent = '\u25B6'; // play icon
+    playBtn.setAttribute('aria-label', 'Play timeline');
     if (playInterval) {
       clearInterval(playInterval);
       playInterval = null;

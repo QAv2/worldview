@@ -1,0 +1,25 @@
+[Unit]
+Description=WorldView Sentinel — anomaly-triggered capture daemon
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sentinel
+Group=sentinel
+WorkingDirectory=/opt/worldview
+ExecStart=/opt/worldview/venv/bin/python capture/sentinel.py
+Restart=on-failure
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sentinel
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/opt/worldview/data
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

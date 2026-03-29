@@ -19,7 +19,11 @@
   </div>
 
   <!-- Globe Container -->
-  <div id="cesiumContainer"></div>
+  <main id="cesiumContainer"></main>
+  <div class="sr-only">
+    Interactive 3D globe showing geospatial intelligence data including vessel tracking, earthquake monitoring, conflict events, and satellite imagery.
+    Use keyboard shortcuts F1-F12 to toggle data layers. Click entities on the map for detailed information.
+  </div>
 
   <!-- Shader overlay for post-processing (CSS-driven, no canvas) -->
   <div id="shader-overlay"><div class="fx-rollbar"></div></div>
@@ -31,7 +35,7 @@
       <span class="live">LIVE</span>
       <span id="utc-clock"></span>
       <span id="layer-status"></span>
-      <button id="share-btn" title="Copy shareable URL [S]">SHARE</button>
+      <button id="share-btn" title="Copy shareable URL [S]" aria-label="Copy shareable URL">SHARE</button>
     </div>
   </div>
 
@@ -39,7 +43,7 @@
   <button id="toggle-panel-btn" title="Toggle panel [Tab]">&#9776;</button>
 
   <!-- Side Panel -->
-  <div id="side-panel">
+  <div id="side-panel" role="complementary" aria-label="Map controls and layers">
     <!-- Base Layer -->
     <div class="panel-section">
       <div class="panel-section-title">Base Layer</div>
@@ -73,12 +77,12 @@
     <!-- Settings -->
     <div class="panel-section">
       <div class="panel-section-title">Settings</div>
-      <div class="layer-toggle" id="labels-toggle">
+      <div class="layer-toggle" id="labels-toggle" role="checkbox" aria-checked="true" tabindex="0">
         <div class="dot" style="background: var(--text-secondary)"></div>
         <span class="layer-label">Show Labels</span>
         <span class="layer-key">L</span>
       </div>
-      <div class="layer-toggle" id="crosshair-toggle">
+      <div class="layer-toggle" id="crosshair-toggle" role="checkbox" aria-checked="false" tabindex="0">
         <div class="dot" style="background: var(--text-secondary)"></div>
         <span class="layer-label">Crosshair</span>
         <span class="layer-key">X</span>
@@ -87,10 +91,10 @@
   </div>
 
   <!-- Dossier Panel (Right Side) -->
-  <div id="dossier-panel">
+  <div id="dossier-panel" role="status" aria-live="polite" tabindex="-1">
     <div class="dossier-header">
       <h2 id="dossier-title">—</h2>
-      <button class="dossier-close" id="dossier-close">&times;</button>
+      <button class="dossier-close" id="dossier-close" aria-label="Close panel">&times;</button>
     </div>
     <div class="dossier-body" id="dossier-body"></div>
   </div>
@@ -106,13 +110,13 @@
 
   <!-- Timeline Bar -->
   <div id="timeline-bar" class="hidden">
-    <button id="timeline-play" class="timeline-btn" title="Play/Pause [\\]">&#9654;</button>
-    <button id="speed-down" class="timeline-btn speed-btn" title="Slower [{]">&#9664;</button>
+    <button id="timeline-play" class="timeline-btn" title="Play/Pause [\\]" aria-label="Play timeline">&#9654;</button>
+    <button id="speed-down" class="timeline-btn speed-btn" title="Slower [{]" aria-label="Decrease playback speed">&#9664;</button>
     <span id="timeline-speed" class="timeline-speed-label">1x</span>
-    <button id="speed-up" class="timeline-btn speed-btn" title="Faster [}]">&#9654;</button>
+    <button id="speed-up" class="timeline-btn speed-btn" title="Faster [}]" aria-label="Increase playback speed">&#9654;</button>
     <div class="timeline-track">
       <span class="timeline-label-left">7d ago</span>
-      <input type="range" id="timeline-slider" step="60000">
+      <input type="range" id="timeline-slider" step="60000" aria-label="Timeline scrubber">
       <span class="timeline-label-right" id="timeline-date">NOW</span>
     </div>
     <span class="timeline-status live" id="timeline-status">LIVE</span>
@@ -135,7 +139,7 @@
   </div>
 
   <!-- Landing Overlay -->
-  <div id="landing-overlay">
+  <div id="landing-overlay" role="dialog" aria-label="WorldView Intel Globe">
     <div class="landing-card">
       <div class="landing-header">
         <div class="landing-title">WORLDVIEW</div>
@@ -161,13 +165,13 @@
           <div class="landing-layer"><span class="landing-dot" style="background:var(--antarctica-color)"></span><span class="landing-key">A</span> Antarctica</div>
 
           <div class="landing-section-title" style="margin-top:16px">Vessel Types</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="diamond" data-color="#ef4444" width="16" height="16"></canvas> Military Ops</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="pentagon" data-color="#06b6d4" width="16" height="16"></canvas> Law Enforcement</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="circle" data-color="#a855f7" width="16" height="16"></canvas> Pilot Vessel</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="plus" data-color="#f59e0b" width="16" height="16"></canvas> Search &amp; Rescue</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="triangle" data-color="#84cc16" width="16" height="16"></canvas> Tug / Tender</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="medical" data-color="#f43f5e" width="16" height="16"></canvas> Medical Transport</div>
-          <div class="landing-layer"><canvas class="landing-icon" data-shape="dot" data-color="#3b82f6" width="16" height="16"></canvas> Other Vessel</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="diamond" data-color="#ef4444" width="16" height="16"></canvas> Military Ops</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="pentagon" data-color="#06b6d4" width="16" height="16"></canvas> Law Enforcement</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="circle" data-color="#a855f7" width="16" height="16"></canvas> Pilot Vessel</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="plus" data-color="#f59e0b" width="16" height="16"></canvas> Search &amp; Rescue</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="triangle" data-color="#84cc16" width="16" height="16"></canvas> Tug / Tender</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="medical" data-color="#f43f5e" width="16" height="16"></canvas> Medical Transport</div>
+          <div class="landing-layer"><canvas class="landing-icon" aria-hidden="true" data-shape="dot" data-color="#3b82f6" width="16" height="16"></canvas> Other Vessel</div>
         </div>
 
         <div class="landing-col">

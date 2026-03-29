@@ -5,9 +5,16 @@ const Dossier = (() => {
   const titleEl = document.getElementById('dossier-title');
   const bodyEl = document.getElementById('dossier-body');
   let currentId = null;
+  let previousFocus = null;
 
   function init() {
     document.getElementById('dossier-close').addEventListener('click', close);
+  }
+
+  function openPanel() {
+    previousFocus = document.activeElement;
+    panel.classList.add('open');
+    panel.focus();
   }
 
   function showBase(baseId) {
@@ -89,7 +96,7 @@ const Dossier = (() => {
     }
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
 
     // Connection click handlers
     bodyEl.querySelectorAll('.dossier-connections li').forEach(li => {
@@ -162,7 +169,7 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -180,7 +187,7 @@ const Dossier = (() => {
       showCuratedIntel(ent);
     }
 
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -334,7 +341,7 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -374,7 +381,7 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -405,7 +412,7 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -451,7 +458,7 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -506,7 +513,7 @@ const Dossier = (() => {
     `;
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -683,7 +690,7 @@ const Dossier = (() => {
     }
 
     bodyEl.innerHTML = html;
-    panel.classList.add('open');
+    openPanel();
     Bases.clearCorrelation(Globe.getViewer());
   }
 
@@ -691,6 +698,10 @@ const Dossier = (() => {
     panel.classList.remove('open');
     currentId = null;
     Bases.clearCorrelation(Globe.getViewer());
+    if (previousFocus && typeof previousFocus.focus === 'function') {
+      previousFocus.focus();
+      previousFocus = null;
+    }
   }
 
   function isOpen() {

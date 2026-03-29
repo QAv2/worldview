@@ -168,11 +168,14 @@ const HashState = (() => {
   function copyUrl() {
     const hash = serialize();
     if (hash) history.replaceState(null, '', '#' + hash);
+    const btn = document.getElementById('share-btn');
     navigator.clipboard.writeText(window.location.href).then(() => {
       const indicator = document.getElementById('mode-indicator');
       indicator.textContent = 'URL COPIED';
       indicator.className = 'visible';
       setTimeout(() => indicator.classList.remove('visible'), 2000);
+      btn.setAttribute('aria-label', 'URL copied to clipboard');
+      setTimeout(() => btn.setAttribute('aria-label', 'Copy shareable URL'), 2000);
     });
   }
 

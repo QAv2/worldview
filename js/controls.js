@@ -20,14 +20,18 @@ const Controls = (() => {
     if (typeof Airspace !== 'undefined') Airspace.setLabelsVisible(labelsVisible);
     if (typeof Antarctica !== 'undefined') Antarctica.setLabelsVisible(labelsVisible);
     if (typeof SatCorrelation !== 'undefined') SatCorrelation.setLabelsVisible(labelsVisible);
-    document.getElementById('labels-toggle').classList.toggle('off', !labelsVisible);
+    const labelsEl = document.getElementById('labels-toggle');
+    labelsEl.classList.toggle('off', !labelsVisible);
+    labelsEl.setAttribute('aria-checked', String(labelsVisible));
   }
 
   function toggleCrosshair() {
     const ch = document.getElementById('crosshair');
     const isVisible = ch.style.display !== 'none';
     ch.style.display = isVisible ? 'none' : 'block';
-    document.getElementById('crosshair-toggle').classList.toggle('off', isVisible);
+    const crosshairEl = document.getElementById('crosshair-toggle');
+    crosshairEl.classList.toggle('off', isVisible);
+    crosshairEl.setAttribute('aria-checked', String(!isVisible));
   }
 
   const LAYERS = [
@@ -117,6 +121,9 @@ const Controls = (() => {
       const div = document.createElement('div');
       div.className = 'layer-toggle';
       div.id = `toggle-${layer.id}`;
+      div.setAttribute('role', 'checkbox');
+      div.setAttribute('aria-checked', 'true');
+      div.tabIndex = 0;
       div.innerHTML = `
         <div class="dot" style="background:${layer.color}"></div>
         <span class="layer-label">${layer.name}</span>
@@ -124,6 +131,12 @@ const Controls = (() => {
         <span class="layer-key">${layer.key}</span>
       `;
       div.addEventListener('click', () => toggleLayer(layer.id));
+      div.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          div.click();
+        }
+      });
       container.appendChild(div);
     });
   }
@@ -135,7 +148,10 @@ const Controls = (() => {
     const newState = !mod.isVisible();
     mod.setVisible(newState);
     const el = document.getElementById(`toggle-${layerId}`);
-    if (el) el.classList.toggle('off', !newState);
+    if (el) {
+      el.classList.toggle('off', !newState);
+      el.setAttribute('aria-checked', String(newState));
+    }
     if (typeof HashState !== 'undefined') HashState.update();
   }
 
@@ -405,12 +421,26 @@ const Controls = (() => {
       document.getElementById('side-panel').classList.toggle('collapsed');
     });
 
-    document.getElementById('labels-toggle').addEventListener('click', () => {
+    const labelsEl = document.getElementById('labels-toggle');
+    labelsEl.addEventListener('click', () => {
       toggleAllLabels();
     });
+    labelsEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        labelsEl.click();
+      }
+    });
 
-    document.getElementById('crosshair-toggle').addEventListener('click', () => {
+    const crosshairEl = document.getElementById('crosshair-toggle');
+    crosshairEl.addEventListener('click', () => {
       toggleCrosshair();
+    });
+    crosshairEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        crosshairEl.click();
+      }
     });
 
   }

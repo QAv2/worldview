@@ -7,8 +7,8 @@
   --border: rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.18);
   --text-primary: rgba(255, 255, 255, 0.92);
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-tertiary: rgba(255, 255, 255, 0.35);
+  --text-secondary: rgba(255, 255, 255, 0.75);
+  --text-tertiary: rgba(255, 255, 255, 0.55);
   --accent: #4a9eff;
   --accent-dim: rgba(74, 158, 255, 0.15);
 
@@ -821,6 +821,11 @@ html, body {
   cursor: pointer;
 }
 
+#timeline-slider:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
 #timeline-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px; height: 12px;
@@ -1136,4 +1141,42 @@ body.timeline-open #coords {
 @media (max-width: 768px) {
   #side-panel { width: 220px; }
   #dossier-panel { width: 300px; }
+}
+
+/* Accessibility: focus indicators */
+button:focus-visible,
+.layer-toggle:focus-visible,
+.timeline-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --text-secondary: rgba(255, 255, 255, 0.9);
+    --text-tertiary: rgba(255, 255, 255, 0.75);
+  }
+  .layer-toggle, .layer-label {
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
