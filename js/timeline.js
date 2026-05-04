@@ -248,7 +248,7 @@ const Timeline = (() => {
         liveEl.style.color = '';
       } else {
         const d = new Date(currentEpoch);
-        const prefix = replayMode ? 'REPLAY' : 'REPLAY';
+        const prefix = replayMode ? 'CAPTURE' : 'REPLAY';
         liveEl.textContent = prefix + ' ' + formatShortDate(d);
         liveEl.style.color = 'var(--quake-shallow)';
       }

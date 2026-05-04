@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WorldView Pre-processor — crunches capture SQLite → playback JSON + PNG frames.
+"""WorldView Pre-processor — crunches capture SQLite → playback JSON frames.
 
 Usage:
   python capture/preprocess.py data/captures/event.db --slug iran-strike-2026-03-01
@@ -12,18 +12,10 @@ import os
 import sqlite3
 from datetime import datetime, timezone
 
-try:
-    from PIL import Image
-except ImportError:
-    Image = None
-    print("[preprocess] WARNING: Pillow not installed — jamming PNGs will be skipped")
-
 
 # ── Config ──────────────────────────────────────────────────────────────────
 
 FRAME_INTERVAL_S = 60      # 1 frame per minute
-JAMMING_W = 360            # longitude pixels
-JAMMING_H = 180            # latitude pixels
 REPLAY_DIR = "data/replays"
 
 # Military identification: db_flags bit 0 = military, or squawk 7x00 patterns
@@ -41,65 +33,12 @@ def is_military(hex_code, db_flags, squawk, category):
     return False
 
 
-# ── Jamming Heatmap ─────────────────────────────────────────────────────────
-
-def build_jamming_png(aircraft_rows, out_path):
-    """Build a 360x180 PNG heatmap from NIC values.
-
-    Pixel (x, y) maps to lon = x - 180, lat = 90 - y.
-    Colors: green (NIC>=7), yellow (4-6), orange (1-3), red (0).
-    """
-    if Image is None:
-        return
-
-    # Accumulate NIC values per cell
-    grid_count = [[0] * JAMMING_W for _ in range(JAMMING_H)]
-    grid_nic_sum = [[0] * JAMMING_W for _ in range(JAMMING_H)]
-
-    for row in aircraft_rows:
-        lat, lon, nic = row
-        if nic is None:
-            continue
-        x = int((lon + 180) % 360)
-        y = int(90 - lat)
-        x = max(0, min(JAMMING_W - 1, x))
-        y = max(0, min(JAMMING_H - 1, y))
-        grid_count[y][x] += 1
-        grid_nic_sum[y][x] += nic
-
-    # Convert to RGBA image
-    img = Image.new("RGBA", (JAMMING_W, JAMMING_H), (0, 0, 0, 0))
-    pixels = img.load()
-
-    for y in range(JAMMING_H):
-        for x in range(JAMMING_W):
-            count = grid_count[y][x]
-            if count == 0:
-                continue
-            avg_nic = grid_nic_sum[y][x] / count
-            # Alpha scales with count (more aircraft = more confident)
-            alpha = min(200, 40 + count * 20)
-
-            if avg_nic >= 7:
-                continue  # Good GPS — no heatmap needed
-            elif avg_nic >= 4:
-                pixels[x, y] = (255, 200, 0, alpha)      # Yellow
-            elif avg_nic >= 1:
-                pixels[x, y] = (255, 120, 0, alpha)      # Orange
-            else:
-                pixels[x, y] = (255, 30, 0, alpha)        # Red
-
-    img.save(out_path, "PNG")
-
-
 # ── Frame Generation ────────────────────────────────────────────────────────
 
 def generate_frames(db, slug, start_ts, end_ts, out_dir):
-    """Generate per-minute frame JSON + jamming PNGs."""
+    """Generate per-minute frame JSON."""
     frames_dir = os.path.join(out_dir, "frames")
-    jamming_dir = os.path.join(out_dir, "jamming")
     os.makedirs(frames_dir, exist_ok=True)
-    os.makedirs(jamming_dir, exist_ok=True)
 
     frame_count = 0
     ts = start_ts
@@ -163,11 +102,6 @@ def generate_frames(db, slug, start_ts, end_ts, out_dir):
         with open(frame_file, "w") as f:
             json.dump(frame, f, separators=(",", ":"))
 
-        # Build jamming PNG
-        nic_rows = [(r[2], r[3], r[7]) for r in ac_rows]  # lat, lon, nic
-        jamming_file = os.path.join(jamming_dir, f"{frame_count:06d}.png")
-        build_jamming_png(nic_rows, jamming_file)
-
         frame_count += 1
         ts += FRAME_INTERVAL_S
 
@@ -177,31 +111,9 @@ def generate_frames(db, slug, start_ts, end_ts, out_dir):
     return frame_count
 
 
-# ── TFR Export ──────────────────────────────────────────────────────────────
-
-def export_tfr(db, start_ts, end_ts, out_dir):
-    """Export the most recent TFR snapshot within the capture window."""
-    airspace_dir = os.path.join(out_dir, "airspace")
-    os.makedirs(airspace_dir, exist_ok=True)
-
-    row = db.execute(
-        "SELECT raw_geojson FROM tfr_snapshots WHERE ts BETWEEN ? AND ? ORDER BY ts DESC LIMIT 1",
-        (start_ts, end_ts),
-    ).fetchone()
-
-    if row:
-        with open(os.path.join(airspace_dir, "tfr.json"), "w") as f:
-            f.write(row[0])
-        print(f"  TFR exported ({len(row[0])} bytes)")
-        return "airspace/tfr.json"
-    else:
-        print("  No TFR data found in capture window")
-        return None
-
-
 # ── Manifest ────────────────────────────────────────────────────────────────
 
-def build_manifest(slug, title, start_ts, end_ts, frame_count, tfr_file):
+def build_manifest(slug, title, start_ts, end_ts, frame_count):
     """Build the replay manifest."""
     return {
         "slug": slug,
@@ -211,7 +123,6 @@ def build_manifest(slug, title, start_ts, end_ts, frame_count, tfr_file):
         "frame_count": frame_count,
         "frame_interval_min": FRAME_INTERVAL_S // 60,
         "correlation_passes": [],  # Populated manually or by sat correlation tool
-        "tfr_file": tfr_file,
     }
 
 
@@ -267,8 +178,7 @@ def main(db_path, slug, title):
     # Count data
     ac_count = db.execute("SELECT COUNT(*) FROM aircraft_snapshots").fetchone()[0]
     ais_count = db.execute("SELECT COUNT(*) FROM ais_snapshots").fetchone()[0]
-    tfr_count = db.execute("SELECT COUNT(*) FROM tfr_snapshots").fetchone()[0]
-    print(f"[preprocess] Data: {ac_count} aircraft rows, {ais_count} vessel rows, {tfr_count} TFR snapshots")
+    print(f"[preprocess] Data: {ac_count} aircraft rows, {ais_count} vessel rows")
 
     # Create output directory
     out_dir = os.path.join(REPLAY_DIR, slug)
@@ -279,12 +189,8 @@ def main(db_path, slug, title):
     frame_count = generate_frames(db, slug, start_ts, end_ts, out_dir)
     print(f"[preprocess] Generated {frame_count} frames")
 
-    # Export TFR
-    print(f"[preprocess] Exporting TFR data...")
-    tfr_file = export_tfr(db, start_ts, end_ts, out_dir)
-
     # Build manifest
-    manifest = build_manifest(slug, title, start_ts, end_ts, frame_count, tfr_file)
+    manifest = build_manifest(slug, title, start_ts, end_ts, frame_count)
     manifest_path = os.path.join(out_dir, "manifest.json")
     with open(manifest_path, "w") as f:
         json.dump(manifest, f, indent=2)
@@ -295,7 +201,7 @@ def main(db_path, slug, title):
 
     db.close()
     print(f"\n[preprocess] Done! Replay at: {out_dir}/")
-    print(f"  {frame_count} frames, {frame_count} jamming PNGs")
+    print(f"  {frame_count} frames")
 
 
 if __name__ == "__main__":

@@ -488,10 +488,6 @@ const Vessels = (() => {
 
   function getCount() { return billboardMap.size; }
 
-  function getVesselByMMSI(mmsi) {
-    return vesselData.get(mmsi) || null;
-  }
-
   function getNavStatusText(code) {
     return NAV_STATUS[code] || 'Unknown';
   }
@@ -503,7 +499,7 @@ const Vessels = (() => {
 
   return {
     init, setVisible, isVisible, getCount, setLabelsVisible,
-    getVesselByMMSI, getNavStatusText, getShipTypeName, countryToFlag,
+    getNavStatusText, getShipTypeName, countryToFlag,
     getTypeColorHex: (shipType) => (TYPE_COLORS[shipType]?.hex || DEFAULT_COLOR_HEX),
   };
 })();

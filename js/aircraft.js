@@ -218,12 +218,6 @@ const Aircraft = (() => {
     });
   }
 
-  function clearTrack(viewer) {
-    trackedHex = null;
-    trailPositions = [];
-    if (trailEntity) { viewer.entities.remove(trailEntity); trailEntity = null; }
-  }
-
   function setVisible(v) {
     visible = v;
     if (pointCollection) pointCollection.show = v;
@@ -262,6 +256,6 @@ const Aircraft = (() => {
 
   return {
     init, setVisible, isVisible, getCount, getMilCount,
-    trackAircraft, clearTrack, setLabelsVisible,
+    trackAircraft, setLabelsVisible,
   };
 })();

@@ -2,7 +2,6 @@
 
 const Intel = (() => {
   let entities = [];
-  let connectionEntities = [];
   let pulseEntities = [];
   let visible = false; // off by default (dense layer)
   let intelData = [];
@@ -252,7 +251,6 @@ const Intel = (() => {
   function setVisible(v) {
     visible = v;
     entities.forEach(e => { e.show = v; });
-    connectionEntities.forEach(e => { e.show = v; });
     pulseEntities.forEach(e => { e.show = v; });
     Globe.requestRender();
   }

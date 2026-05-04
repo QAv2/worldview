@@ -159,10 +159,6 @@ const Bases = (() => {
     correlationEntities = [];
   }
 
-  function setCorrelationRadius(km) {
-    correlationRadius = km;
-  }
-
   function getBaseById(id) {
     return baseData.find(b => b.id === id);
   }
@@ -190,6 +186,6 @@ const Bases = (() => {
 
   return {
     init, setVisible, isVisible, getCount, getData, getBaseById,
-    showCorrelation, clearCorrelation, setCorrelationRadius, setLabelsVisible,
+    showCorrelation, clearCorrelation, setLabelsVisible,
   };
 })();

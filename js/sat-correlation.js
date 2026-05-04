@@ -44,25 +44,10 @@ const SatCorrelation = (() => {
     for (const pass of correlations) {
       if (epochMs < pass.pass_start_ms || epochMs > pass.pass_end_ms) continue;
 
-      // Calculate satellite position at current time
-      // Use existing Satellites module if available for TLE propagation
-      let satLat, satLon, satAlt;
-
-      if (typeof Satellites !== 'undefined' && Satellites.propagateNorad) {
-        const pos = Satellites.propagateNorad(pass.norad_id, epochMs);
-        if (pos) {
-          satLat = pos.lat;
-          satLon = pos.lon;
-          satAlt = pos.alt;
-        }
-      }
-
-      // Fallback: use peak position from manifest
-      if (satLat === undefined) {
-        satLat = pass.peak_lat || 0;
-        satLon = pass.peak_lon || 0;
-        satAlt = SAT_ALT;
-      }
+      // Use peak position from manifest (TLE propagation not implemented)
+      const satLat = pass.peak_lat || 0;
+      const satLon = pass.peak_lon || 0;
+      const satAlt = SAT_ALT;
 
       // Ground target (from manifest or use peak position)
       const groundLat = pass.target_lat || pass.peak_lat || 0;

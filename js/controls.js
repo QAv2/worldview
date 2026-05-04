@@ -287,7 +287,7 @@ const Controls = (() => {
 
       const key = e.key;
 
-      // Base layer shortcuts (Alt+1-5)
+      // Base layer shortcuts (Alt+1-6)
       if (e.altKey && key >= '1' && key <= '6') {
         e.preventDefault();
         const layerIds = ['dark', 'satellite', 'terrain', 'osm', 'voyager', 'google3d'];

@@ -1,7 +1,6 @@
 // earthquakes.js — USGS GeoJSON earthquake feed with pulsing markers
 
 const Earthquakes = (() => {
-  let dataSource = null;
   let entities = [];
   let visible = true;
   let quakeData = [];

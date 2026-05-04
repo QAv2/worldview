@@ -204,11 +204,6 @@ const Satellites = (() => {
     }
   }
 
-  function clearTrack(viewer) {
-    trackedSatId = null;
-    if (orbitEntity) { viewer.entities.remove(orbitEntity); orbitEntity = null; }
-  }
-
   function setVisible(v) {
     visible = v;
     entities.forEach(e => { e.show = v; });
@@ -239,5 +234,5 @@ const Satellites = (() => {
     }
   }
 
-  return { init, setVisible, isVisible, getCount, trackSat, clearTrack, setLabelsVisible, setTime };
+  return { init, setVisible, isVisible, getCount, trackSat, setLabelsVisible, setTime };
 })();

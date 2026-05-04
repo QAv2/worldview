@@ -11,7 +11,6 @@ const Playback = (() => {
   let currentReplay = null;   // manifest object
   let replaySlug = null;
   let frameIndex = -1;
-  let currentEpoch = null;
 
   // Primitives
   let comPoints = null;       // PointPrimitiveCollection — commercial aircraft (unlabeled, no pick)
@@ -216,7 +215,6 @@ const Playback = (() => {
 
   async function setTime(epochMs) {
     if (!currentReplay || !visible) return;
-    currentEpoch = epochMs;
 
     // Calculate frame index
     const elapsed = epochMs - currentReplay.start_ms;

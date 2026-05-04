@@ -565,7 +565,7 @@ const Dossier = (() => {
 
         html = `
           <div class="dossier-type-tag" style="background:${antColor}22;color:${antColor}">research station</div>
-          ${photoUrl ? `<div class="dossier-photo"><img src="${esc(photoUrl)}" alt="${esc(String(name || ''))}" loading="lazy" onerror="this.parentElement.style.display='none'"></div>` : ''}
+          ${renderPhoto(photoUrl, name)}
           <div class="dossier-field"><div class="dossier-field-label">Country</div><div class="dossier-field-value">${esc(String(country || ''))}</div></div>
           ${year ? `<div class="dossier-field"><div class="dossier-field-label">Established</div><div class="dossier-field-value">${year}</div></div>` : ''}
           <div class="dossier-field"><div class="dossier-field-label">Seasonality</div><div class="dossier-field-value">${esc(String(seasonality || ''))}</div></div>

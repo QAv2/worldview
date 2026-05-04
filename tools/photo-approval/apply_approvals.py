@@ -21,24 +21,19 @@ MILITARY = REPO / "data" / "military-bases.json"
 INTEL_PHOTOS = REPO / "data" / "intel-photos.json"
 
 
-def patch_data_file(path: Path, approvals: dict, target_type: str) -> tuple[int, int]:
+def patch_data_file(path: Path, approvals: dict) -> int:
     data = json.loads(path.read_text())
     matched = 0
-    skipped_no_match = 0
     by_id = {e["id"]: e for e in data}
     for ent_id, decision in approvals.items():
         if decision.get("decision") != "approved":
             continue
         if ent_id not in by_id:
             continue  # may belong to a different type
-        e = by_id[ent_id]
-        # Sniff: only patch ids that look like the right type.
-        # Underground bases live in bases.json; military in military-bases.json.
-        # If the source has both, ids should be unique anyway.
-        e["photo_url"] = decision["photo_url"]
+        by_id[ent_id]["photo_url"] = decision["photo_url"]
         matched += 1
     path.write_text(json.dumps(data, indent=2) + "\n")
-    return matched, skipped_no_match
+    return matched
 
 
 def write_intel_photos(approvals: dict, intel_ids: set[str]) -> int:
@@ -71,8 +66,8 @@ def main():
     mil_data_ids = {e["id"] for e in json.loads(MILITARY.read_text())}
     intel_ids = load_intel_ids()
 
-    ub_count, _ = patch_data_file(BASES, approvals, "underground_base")
-    mb_count, _ = patch_data_file(MILITARY, approvals, "military_base")
+    ub_count = patch_data_file(BASES, approvals)
+    mb_count = patch_data_file(MILITARY, approvals)
     intel_count = write_intel_photos(approvals, intel_ids)
 
     approved_ids = {k for k, v in approvals.items() if v.get("decision") == "approved"}

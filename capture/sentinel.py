@@ -285,10 +285,6 @@ async def run(dry_run=False):
             warmed_ok = warmed_count >= WARMUP_REQUIRED
 
             if not warmed_ok:
-                remaining = {n: WARMUP_SAMPLES - baselines[n].n
-                             for n in SIGNALS if not baselines[n].warmed}
-                if any(now - last_poll[n] < SIGNALS[n]["interval"] + 1 for n in SIGNALS):
-                    pass  # don't spam warmup status every tick
                 try:
                     await asyncio.wait_for(shutdown_event.wait(), timeout=TICK_INTERVAL)
                     break

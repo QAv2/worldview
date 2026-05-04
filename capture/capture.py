@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""WorldView Capture Daemon — records ADS-B + AIS + TFR to SQLite.
+"""WorldView Capture Daemon — records ADS-B + AIS to SQLite.
 
 Usage:
   python capture/capture.py --db data/captures/event.db --duration 120
@@ -11,7 +11,6 @@ import asyncio
 import json
 import os
 import signal
-import sys
 import time
 
 import aiohttp
@@ -24,9 +23,6 @@ ADSB_INTERVAL = 15        # seconds between ADS-B polls
 
 AIS_INTERVAL = 30          # seconds between AIS polls
 AIS_WS_URL = "wss://stream.aisstream.io/v0/stream"
-
-TFR_URL = "https://raw.githubusercontent.com/airframesio/data/master/json/faa/tfrs.geojson"
-TFR_INTERVAL = 300         # 5 minutes
 
 # ── Schema ──────────────────────────────────────────────────────────────────
 
@@ -64,19 +60,12 @@ CREATE TABLE IF NOT EXISTS ais_snapshots (
     status INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_ais_ts ON ais_snapshots(ts);
-
-CREATE TABLE IF NOT EXISTS tfr_snapshots (
-    id INTEGER PRIMARY KEY,
-    ts INTEGER NOT NULL,
-    source TEXT,
-    raw_geojson TEXT NOT NULL
-);
 """
 
 # ── Globals ─────────────────────────────────────────────────────────────────
 
 running = True
-stats = {"adsb_polls": 0, "adsb_rows": 0, "ais_polls": 0, "ais_rows": 0, "tfr_polls": 0}
+stats = {"adsb_polls": 0, "adsb_rows": 0, "ais_polls": 0, "ais_rows": 0}
 
 
 def handle_signal(sig, frame):
@@ -227,37 +216,6 @@ async def poll_ais(session, db):
             await asyncio.sleep(10)
 
 
-# ── TFR Capture ─────────────────────────────────────────────────────────────
-
-async def poll_tfr(session, db):
-    """Fetch TFR GeoJSON every TFR_INTERVAL seconds."""
-    global running
-    while running:
-        try:
-            ts = int(time.time())
-            async with session.get(TFR_URL, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                if resp.status != 200:
-                    print(f"[tfr] HTTP {resp.status}")
-                    await asyncio.sleep(TFR_INTERVAL)
-                    continue
-                text = await resp.text()
-
-            await db.execute(
-                "INSERT INTO tfr_snapshots (ts, source, raw_geojson) VALUES (?, ?, ?)",
-                (ts, "airframesio", text),
-            )
-            await db.commit()
-            stats["tfr_polls"] += 1
-            print(f"[tfr] poll {stats['tfr_polls']}: saved ({len(text)} bytes)")
-
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            print(f"[tfr] error: {e}")
-
-        await asyncio.sleep(TFR_INTERVAL)
-
-
 # ── Main ────────────────────────────────────────────────────────────────────
 
 async def main(db_path, duration):
@@ -267,7 +225,7 @@ async def main(db_path, duration):
 
     print(f"[capture] Database: {db_path}")
     print(f"[capture] Duration: {duration}min" if duration else "[capture] Duration: until Ctrl+C")
-    print(f"[capture] ADS-B interval: {ADSB_INTERVAL}s | AIS interval: {AIS_INTERVAL}s | TFR interval: {TFR_INTERVAL}s")
+    print(f"[capture] ADS-B interval: {ADSB_INTERVAL}s | AIS interval: {AIS_INTERVAL}s")
 
     os.makedirs(os.path.dirname(db_path) or ".", exist_ok=True)
 
@@ -281,7 +239,6 @@ async def main(db_path, duration):
             tasks = [
                 asyncio.create_task(poll_adsb(session, db)),
                 asyncio.create_task(poll_ais(session, db)),
-                asyncio.create_task(poll_tfr(session, db)),
             ]
 
             if duration:
@@ -296,8 +253,7 @@ async def main(db_path, duration):
             await asyncio.gather(*tasks, return_exceptions=True)
 
     print(f"\n[capture] Done. ADS-B: {stats['adsb_polls']} polls / {stats['adsb_rows']} rows | "
-          f"AIS: {stats['ais_polls']} flushes / {stats['ais_rows']} rows | "
-          f"TFR: {stats['tfr_polls']} polls")
+          f"AIS: {stats['ais_polls']} flushes / {stats['ais_rows']} rows")
 
 
 if __name__ == "__main__":

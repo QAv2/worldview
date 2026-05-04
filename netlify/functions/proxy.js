@@ -130,9 +130,12 @@ exports.handler = async (event) => {
 
     const contentType = resp.headers.get('content-type') || 'application/json';
 
-    // Successful response: cache for fallback, return live
+    // Successful response: cache for fallback, return live.
+    // Skip caching HTML — upstreams (e.g. CelesTrak) sometimes return HTML
+    // error/maintenance pages with 200; we don't want to serve those back as TLE.
     if (resp.status >= 200 && resp.status < 300) {
-      if (entry.fallback && body.length > 0) {
+      const cacheable = entry.fallback && body.length > 0 && !contentType.includes('text/html');
+      if (cacheable) {
         fallbackCache.set(key, { status: resp.status, contentType, body, ts: Date.now() });
       }
       return {
