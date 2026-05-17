@@ -18,7 +18,6 @@ exports.handler = async (event) => {
     statusCode: 200,
     headers,
     body: JSON.stringify({
-      googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || '',
       maptilerApiKey: process.env.MAPTILER_API_KEY || '',
     }),
   };

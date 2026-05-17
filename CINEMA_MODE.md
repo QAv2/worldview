@@ -231,8 +231,8 @@ high-res mid-shot. This is the single biggest Cesium recording artifact.
 - **No real-time data during cinema.** Earthquakes, aircraft (ADS-B), vessels
   (AIS), conflicts — all cached feeds. Cinema init loads the most recent
   snapshot at build time and never refreshes.
-- **Tile provider pinned.** Base layers that fetch from live CDNs (Google 3D
-  Tiles, satellite imagery) must resolve to the same tile revision across
+- **Tile provider pinned.** Base layers that fetch from live CDNs (satellite
+  imagery, OSM, CartoDB) must resolve to the same tile revision across
   runs. If the CDN versions tiles, cache the response on first fetch.
 - **FXAA always on.** Default WorldView toggles FXAA; cinema mode forces on.
 - **Resolution fixed.** Canvas is locked to the Remotion composition
@@ -272,10 +272,6 @@ Keep: `#cesiumContainer`.
 
 ## Open Questions
 
-- **Google 3D Tiles caching.** If the pilot uses Google 3D Tiles for city
-  close-ups, tile revisions might differ between record sessions. Need a
-  local tile proxy or fall back to the static satellite base layer for those
-  shots. Deferrable — not needed for AI Wars pilot.
 - **ADS-B / AIS feeds.** Current WorldView fetches live feeds. Cinema mode
   needs a snapshot. Simplest path: cinema init saves the first-fetch response
   to `localStorage` and replays it. Verify this is acceptable or if we need a

@@ -3,8 +3,6 @@
 const Globe = (() => {
   let viewer = null;
   let currentBaseLayer = 'dark';
-  let google3dTileset = null;
-  let GOOGLE_API_KEY = '';
   let MAPTILER_API_KEY = '';
 
   // Available base layer providers
@@ -48,10 +46,6 @@ const Globe = (() => {
         maximumLevel: 18,
       }),
     },
-    google3d: {
-      name: '3D Tiles',
-      is3d: true,
-    },
   };
 
   async function loadConfig() {
@@ -59,7 +53,6 @@ const Globe = (() => {
       const resp = await fetch('/.netlify/functions/config');
       if (resp.ok) {
         const cfg = await resp.json();
-        GOOGLE_API_KEY = cfg.googleMapsApiKey || '';
         MAPTILER_API_KEY = cfg.maptilerApiKey || '';
       }
     } catch (err) {
@@ -135,55 +128,9 @@ const Globe = (() => {
     return viewer;
   }
 
-  function removeGoogle3d() {
-    if (google3dTileset) {
-      viewer.scene.primitives.remove(google3dTileset);
-      google3dTileset = null;
-    }
-    viewer.scene.globe.show = true;
-  }
-
-  async function loadGoogle3d() {
-    if (google3dTileset) return;
-    if (!GOOGLE_API_KEY) {
-      console.warn('[Globe] Google Maps API key not configured');
-      return;
-    }
-    try {
-      google3dTileset = await Cesium.Cesium3DTileset.fromUrl(
-        `https://tile.googleapis.com/v1/3dtiles/root.json?key=${GOOGLE_API_KEY}`
-      );
-      viewer.scene.primitives.add(google3dTileset);
-      viewer.scene.globe.show = false;
-      requestRender();
-    } catch (err) {
-      console.error('[Globe] Failed to load Google 3D Tiles:', err);
-      google3dTileset = null;
-      viewer.scene.globe.show = true;
-    }
-  }
-
   function setBaseLayer(layerId) {
     if (!viewer || !BASE_LAYERS[layerId]) return;
     const scene = viewer.scene;
-
-    // Leaving 3D tiles mode
-    if (currentBaseLayer === 'google3d' && layerId !== 'google3d') {
-      removeGoogle3d();
-    }
-
-    // Entering 3D tiles mode
-    if (layerId === 'google3d') {
-      currentBaseLayer = layerId;
-      loadGoogle3d();
-      scene.backgroundColor = Cesium.Color.fromCssColorString('#000408');
-      scene.globe.showGroundAtmosphere = true;
-      if (scene.sun) scene.sun.show = true;
-      if (scene.moon) scene.moon.show = true;
-      scene.globe.enableLighting = true;
-      requestRender();
-      return;
-    }
 
     // Standard imagery layer swap
     const layers = viewer.imageryLayers;

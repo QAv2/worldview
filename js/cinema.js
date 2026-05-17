@@ -362,7 +362,7 @@
   /**
    * base — base layer swap.
    *
-   *   #cinema/base/<dark|satellite|terrain|osm|voyager|google3d>/hold:MS
+   *   #cinema/base/<dark|satellite|terrain|osm|voyager>/hold:MS
    */
   async function cmd_base(cue) {
     var layerId = (cue.target || 'dark').toLowerCase();
